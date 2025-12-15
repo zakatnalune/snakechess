@@ -26,8 +26,8 @@ body {
 /* 🟫 КЛЕТКА */
 .cell {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
 }
 
 /* ФОН КЛЕТКИ */
