@@ -100,36 +100,41 @@ function clickCell(x,y){
 }
 
 // ================== HIGHLIGHT ==================
-function highlight(){
-  document.querySelectorAll('.overlay')
-    .forEach(o=>o.classList.remove('sel','move'));
+function refreshHighlights(){
+  document.querySelectorAll('.overlay').forEach(o=>{
+    o.classList.remove(
+      'highlight-selected',
+      'highlight-move',
+      'highlight-capture'
+    );
+  });
+
   if(!selected) return;
 
-  const i = selected.y*COLS+selected.x;
-  boardEl.children[i].querySelector('.overlay').classList.add('sel');
+  // подсветка выбранной фигуры
+  const sel = document.querySelector(
+    `.cell[data-x='${selected.x}'][data-y='${selected.y}'] .overlay`
+  );
+  if(sel) sel.classList.add('highlight-selected');
 
-  generateMoves(selected.x,selected.y).forEach(m=>{
-    const j = m.y*COLS+m.x;
-    boardEl.children[j].querySelector('.overlay')
-      .classList.add('move');
+  const moves = generateMoves(selected.x, selected.y);
+  const color = board[selected.y][selected.x].color;
+
+  moves.forEach(m=>{
+    const cell = document.querySelector(
+      `.cell[data-x='${m.x}'][data-y='${m.y}'] .overlay`
+    );
+    if(!cell) return;
+
+    const target = board[m.y][m.x];
+    if(target && target.color !== color){
+      cell.classList.add('highlight-capture'); // 🟥 можно побить
+    } else {
+      cell.classList.add('highlight-move'); // 🟩 обычный ход
+    }
   });
 }
 
-// ================== MOVE DISPATCH ==================
-function generateMoves(x,y){
-  const p=board[y][x];
-  if(!p) return [];
-  switch(p.type){
-    case 'king':   return genKing(x,y,p.color);
-    case 'queen':  return genQueen(x,y,p.color);
-    case 'rook':   return genRook(x,y,p.color);
-    case 'bishop': return genBishop(x,y,p.color);
-    case 'knight': return genKnight(x,y,p.color);
-    case 'pawn':   return genPawn(x,y,p.color);
-    case 'snake':  return genSnake(x,y,p.color);
-    default: return [];
-  }
-}
 
 // ================== RAYS ==================
 function rayMoves(x,y,dirs,color){
