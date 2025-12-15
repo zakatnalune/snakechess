@@ -18,6 +18,7 @@ let selected = null;
 let turn = 'w';
 let history = [];
 let capWhite = [], capBlack = [];
+let gameOver = false;
 
 // ================= DOM =================
 const boardEl = document.getElementById('board');
@@ -75,6 +76,7 @@ function render(){
 
 // ================= INPUT =================
 function clickCell(x,y){
+	if(gameOver) return;
   if(selected){
     const moves=getLegalMoves(selected.x,selected.y);
     if(moves.some(m=>m.x===x && m.y===y)){
@@ -113,7 +115,7 @@ function movePiece(sx,sy,tx,ty){
 // ================= HIGHLIGHT =================
 function refreshHighlights(){
   document.querySelectorAll('.overlay').forEach(o=>{
-    o.classList.remove('highlight-selected','highlight-move','highlight-capture','highlight-check');
+    o.classList.remove('highlight-selected','highlight-move','highlight-capture');
   });
   if(!selected) return;
 
@@ -279,11 +281,21 @@ function hasLegalMove(c){
 }
 
 function checkGameEnd(){
-  const check=isKingInCheck(turn,board);
-  if(!hasLegalMove(turn)){
-    alert(check?'МАТ':'ПАТ');
+  const inCheck = isKingInCheck(turn, board);
+  const hasMoves = hasLegalMove(turn);
+
+  if(!hasMoves){
+    gameOver = true;
+
+    if(inCheck){
+      alert(`МАТ! ${turn === 'w' ? 'Белым' : 'Чёрным'} объявлен мат`);
+    } else {
+      alert('ПАТ! Ничья');
+    }
   }
 }
+
+
 
 // ================= REPETITION =================
 function serialize(){
