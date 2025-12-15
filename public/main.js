@@ -42,10 +42,10 @@ const capBlackEl = document.getElementById('cap-black');
 function setup(){
   board = Array.from({length:ROWS},()=>Array(COLS).fill(null));
   for(let x=0;x<COLS;x++){
-    board[0][x] = {type:backRank[x], color:'b'};
-    board[1][x] = {type:'pawn', color:'b'};
-    board[6][x] = {type:'pawn', color:'w'};
-    board[7][x] = {type:backRank[x], color:'w'};
+    board[0][x] = {type:backRank[x], color:'b', moved:false};
+    board[1][x] = {type:'pawn', color:'b', moved:false};
+    board[6][x] = {type:'pawn', color:'w', moved:false};
+    board[7][x] = {type:backRank[x], color:'w', moved:false};
   }
 }
 
@@ -87,7 +87,7 @@ function render(){
 // ================== INPUT ==================
 function clickCell(x,y){
   if(selected){
-    const moves = generateMoves(selected.x,selected.y);
+    const moves = getLegalMoves(selected.x,selected.y);
     if(moves.some(m=>m.x===x && m.y===y)){
       movePiece(selected.x,selected.y,x,y);
       selected=null;
@@ -110,7 +110,7 @@ function movePiece(sx,sy,tx,ty){
   if(target){
     (target.color==='w'?capWhite:capBlack).push(target);
   }
-  board[ty][tx] = board[sy][sx];
+  board[ty][tx] = {...board[sy][sx], moved:true};
   board[sy][sx] = null;
 }
 
@@ -125,7 +125,7 @@ function refreshHighlights(){
     .querySelector(`.cell[data-x='${selected.x}'][data-y='${selected.y}'] .overlay`)
     ?.classList.add('highlight-selected');
 
-  const moves = generateMoves(selected.x,selected.y);
+  const moves = getLegalMoves(selected.x,selected.y);
   const color = board[selected.y][selected.x].color;
 
   moves.forEach(m=>{
@@ -139,28 +139,81 @@ function refreshHighlights(){
   });
 }
 
-// ================== MOVES ==================
-function generateMoves(x,y){
+// ================== LEGAL MOVES (CHECK) ==================
+function getLegalMoves(x,y){
   const p = board[y][x];
   if(!p) return [];
+
+  const raw = generateMoves(x,y);
+  const legal = [];
+
+  for(const m of raw){
+    const copy = board.map(r=>r.map(c=>c?{...c}:null));
+    copy[m.y][m.x] = copy[y][x];
+    copy[y][x] = null;
+
+    if(!isKingInCheck(p.color, copy)){
+      legal.push(m);
+    }
+  }
+  return legal;
+}
+
+// ================== CHECK ==================
+function findKing(color, state){
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const p = state[y][x];
+      if(p && p.type==='king' && p.color===color){
+        return {x,y};
+      }
+    }
+  }
+  return null;
+}
+
+function isKingInCheck(color, state){
+  const king = findKing(color, state);
+  if(!king) return false;
+
+  const enemy = color==='w'?'b':'w';
+
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const p = state[y][x];
+      if(p && p.color===enemy){
+        const moves = generateMoves(x,y, state);
+        if(moves.some(m=>m.x===king.x && m.y===king.y)){
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// ================== MOVE GENERATION ==================
+function generateMoves(x,y,state=board){
+  const p = state[y][x];
+  if(!p) return [];
   switch(p.type){
-    case 'king': return genKing(x,y,p.color);
-    case 'queen': return genQueen(x,y,p.color);
-    case 'rook': return genRook(x,y,p.color);
-    case 'bishop': return genBishop(x,y,p.color);
-    case 'knight': return genKnight(x,y,p.color);
-    case 'pawn': return genPawn(x,y,p.color);
-    case 'snake': return genSnake(x,y,p.color);
+    case 'king': return genKing(x,y,p.color,state);
+    case 'queen': return genQueen(x,y,p.color,state);
+    case 'rook': return genRook(x,y,p.color,state);
+    case 'bishop': return genBishop(x,y,p.color,state);
+    case 'knight': return genKnight(x,y,p.color,state);
+    case 'pawn': return genPawn(x,y,p.color,state);
+    case 'snake': return genSnake(x,y,p.color,state);
   }
   return [];
 }
 
-function rayMoves(x,y,dirs,c){
+function rayMoves(x,y,dirs,c,state){
   const r=[];
   for(const d of dirs){
     let nx=x+d[0], ny=y+d[1];
     while(inside(nx,ny)){
-      const t=board[ny][nx];
+      const t=state[ny][nx];
       if(!t) r.push({x:nx,y:ny});
       else { if(t.color!==c) r.push({x:nx,y:ny}); break; }
       nx+=d[0]; ny+=d[1];
@@ -169,33 +222,35 @@ function rayMoves(x,y,dirs,c){
   return r;
 }
 
-const genKing=(x,y,c)=>[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
-  .map(d=>({x:x+d[0],y:y+d[1]}))
-  .filter(m=>inside(m.x,m.y)&&!isAlly(board[m.y][m.x],c));
-
-const genQueen=(x,y,c)=>rayMoves(x,y,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],c);
-const genRook=(x,y,c)=>rayMoves(x,y,[[1,0],[-1,0],[0,1],[0,-1]],c);
-const genBishop=(x,y,c)=>rayMoves(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],c);
-
-function genKnight(x,y,c){
-  const d=[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+function genKing(x,y,c,state){
+  const d=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
   return d.map(v=>({x:x+v[0],y:y+v[1]}))
-    .filter(m=>inside(m.x,m.y)&&!isAlly(board[m.y][m.x],c));
+    .filter(m=>inside(m.x,m.y)&&!isAlly(state[m.y][m.x],c));
 }
 
-function genPawn(x,y,c){
+const genQueen=(x,y,c,s)=>rayMoves(x,y,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],c,s);
+const genRook=(x,y,c,s)=>rayMoves(x,y,[[1,0],[-1,0],[0,1],[0,-1]],c,s);
+const genBishop=(x,y,c,s)=>rayMoves(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],c,s);
+
+function genKnight(x,y,c,state){
+  const d=[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+  return d.map(v=>({x:x+v[0],y:y+v[1]}))
+    .filter(m=>inside(m.x,m.y)&&!isAlly(state[m.y][m.x],c));
+}
+
+function genPawn(x,y,c,state){
   const dir=c==='w'?-1:1,res=[];
-  if(!board[y+dir]?.[x]) res.push({x,y:y+dir});
+  if(inside(x,y+dir) && !state[y+dir][x]) res.push({x,y:y+dir});
   for(const dx of [-1,1]){
     const nx=x+dx, ny=y+dir;
-    if(inside(nx,ny)&&board[ny][nx]&&board[ny][nx].color!==c)
+    if(inside(nx,ny)&&state[ny][nx]&&state[ny][nx].color!==c)
       res.push({x:nx,y:ny});
   }
   return res;
 }
 
-// 🐍 ЗМЕЯ
-function genSnake(x,y,c){
+// 🐍 SNAKE
+function genSnake(x,y,c,state){
   const d={NE:[1,-1],NW:[-1,-1],SE:[1,1],SW:[-1,1]};
   const p=[['NW','NE'],['NE','NW'],['NE','SE'],['SE','NE'],['SE','SW'],['SW','SE'],['SW','NW'],['NW','SW']];
   const r=[];
@@ -205,7 +260,7 @@ function genSnake(x,y,c){
       const v=d[pat[i%2]];
       cx+=v[0]; cy+=v[1];
       if(!inside(cx,cy)) break;
-      const t=board[cy][cx];
+      const t=state[cy][cx];
       if(t&&t.color===c) break;
       r.push({x:cx,y:cy});
       if(t) break;
