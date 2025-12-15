@@ -127,6 +127,14 @@ function refreshHighlights(){
     if(!o) return;
     o.classList.add(board[m.y][m.x] ? 'highlight-capture' : 'highlight-move');
   });
+  if (isKingInCheck(turn, board)) {
+  const k = findKing(turn, board);
+  const ov = document.querySelector(
+    `.cell[data-x='${k.x}'][data-y='${k.y}'] .overlay`
+  );
+  ov?.classList.add(isCheckmate(turn) ? 'highlight-mate' : 'highlight-check');
+}
+
 }
 
 // ================= LEGAL MOVES =================
