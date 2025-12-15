@@ -1,147 +1,70 @@
-<<<<<<< HEAD
-:root {
-  --cell: 80px;
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 20px;
-  background: #f0f0f0;
-  font-family: Arial, sans-serif;
+  background: #ddd;
 }
 
 .game-wrapper {
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 20px;
-  align-items: flex-start;
+  padding: 20px;
 }
 
+/* 🟩 ДОСКА */
 .board {
   display: grid;
-  grid-template-columns: repeat(10, var(--cell));
-  grid-template-rows: repeat(8, var(--cell));
-  border: 5px solid #000;
-  background: #000;
+  grid-template-columns: repeat(10, 64px);
+  grid-template-rows: repeat(8, 64px);
+  border: 5px solid black;
 }
 
+/* 🟫 КЛЕТКА */
 .cell {
-  width: var(--cell);
-  height: var(--cell);
   position: relative;
+  width: 64px;
+  height: 64px;
 }
 
+/* ФОН КЛЕТКИ */
 .cell-bg {
   position: absolute;
   inset: 0;
   background-size: cover;
 }
 
+/* ФИГУРА */
 .piece {
   position: absolute;
-  width: 64px;
-  height: 64px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
+/* СЛОЙ ДЛЯ КЛИКОВ */
 .overlay {
   position: absolute;
   inset: 0;
   cursor: pointer;
 }
 
-.sel {
-  background: rgba(120, 0, 0, 0.5);
+/* ПОДСВЕТКИ */
+.overlay.sel {
+  background: rgba(255, 0, 0, 0.4);
 }
 
-.move {
-  background: rgba(0, 150, 0, 0.35);
+.overlay.move {
+  background: rgba(0, 255, 0, 0.35);
 }
 
+/* ВЗЯТЫЕ ФИГУРЫ */
 .captured {
-  width: 100px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  width: 120px;
+  min-height: 520px;
+  background: rgba(0,0,0,0.1);
 }
-
-.captured img {
-  width: 40px;
-  height: 40px;
-}
-=======
-:root {
-  --cell: 80px;
-}
-
-body {
-  margin: 0;
-  padding: 20px;
-  background: #f0f0f0;
-  font-family: Arial, sans-serif;
-}
-
-.game-wrapper {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(10, var(--cell));
-  grid-template-rows: repeat(8, var(--cell));
-  border: 5px solid #000;
-  background: #000;
-}
-
-.cell {
-  width: var(--cell);
-  height: var(--cell);
-  position: relative;
-}
-
-.cell-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-}
-
-.piece {
-  position: absolute;
-  width: 64px;
-  height: 64px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.overlay {
-  position: absolute;
-  inset: 0;
-  cursor: pointer;
-}
-
-.sel {
-  background: rgba(120, 0, 0, 0.5);
-}
-
-.move {
-  background: rgba(0, 150, 0, 0.35);
-}
-
-.captured {
-  width: 100px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.captured img {
-  width: 40px;
-  height: 40px;
-}
->>>>>>> 0130a033ac6cffbcadfba197d3490fc212a542f2
