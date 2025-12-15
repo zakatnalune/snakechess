@@ -1,11 +1,9 @@
+// ================== CONFIG ==================
 const COLS = 10;
 const ROWS = 8;
 const IMG = 'img/';
 
-const cellsImg = {
-  w: 'wcell.jpg',
-  b: 'bcell.jpg'
-};
+const cellsImg = { w: 'wcell.jpg', b: 'bcell.jpg' };
 
 const piecesImg = {
   w: {
@@ -18,35 +16,48 @@ const piecesImg = {
   }
 };
 
-const back = ['rook','knight','bishop','snake','queen','king','snake','bishop','knight','rook'];
+const backRank = [
+  'rook','knight','bishop','snake',
+  'queen','king',
+  'snake','bishop','knight','rook'
+];
 
+// ================== STATE ==================
 let board = [];
 let selected = null;
+let turn = 'w';
+
+// ================== HELPERS ==================
+function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
+function isAlly(p,c){ return p && p.color===c; }
 
 const boardEl = document.getElementById('board');
 
-function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
-
+// ================== SETUP ==================
 function setup(){
   board = Array.from({length:ROWS},()=>Array(COLS).fill(null));
   for(let x=0;x<COLS;x++){
-    board[0][x]={type:back[x],color:'b'};
-    board[1][x]={type:'pawn',color:'b'};
-    board[6][x]={type:'pawn',color:'w'};
-    board[7][x]={type:back[x],color:'w'};
+    board[0][x] = {type:backRank[x], color:'b'};
+    board[1][x] = {type:'pawn', color:'b'};
+    board[6][x] = {type:'pawn', color:'w'};
+    board[7][x] = {type:backRank[x], color:'w'};
   }
 }
 
+// ================== RENDER ==================
 function render(){
   boardEl.innerHTML='';
   for(let y=0;y<ROWS;y++){
     for(let x=0;x<COLS;x++){
-      const cell=document.createElement('div');
+      const cell = document.createElement('div');
       cell.className='cell';
+      cell.dataset.x=x;
+      cell.dataset.y=y;
 
       const bg=document.createElement('div');
       bg.className='cell-bg';
-      bg.style.backgroundImage=`url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
+      bg.style.backgroundImage =
+        `url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
       cell.appendChild(bg);
 
       const ov=document.createElement('div');
@@ -61,67 +72,167 @@ function render(){
         img.src=IMG+piecesImg[p.color][p.type];
         cell.appendChild(img);
       }
-
       boardEl.appendChild(cell);
     }
   }
   highlight();
 }
 
+// ================== INPUT ==================
 function clickCell(x,y){
   if(selected){
-    const ms = snakeMoves(selected.x,selected.y,board[selected.y][selected.x].color);
-    if(ms.some(m=>m.x===x && m.y===y)){
-      board[y][x]=board[selected.y][selected.x];
-      board[selected.y][selected.x]=null;
+    const moves = generateMoves(selected.x,selected.y);
+    if(moves.some(m=>m.x===x && m.y===y)){
+      board[y][x] = board[selected.y][selected.x];
+      board[selected.y][selected.x] = null;
       selected=null;
+      turn = (turn==='w')?'b':'w';
       render();
       return;
     }
   }
-  if(board[y][x]) selected={x,y};
-  else selected=null;
+  if(board[y][x] && board[y][x].color===turn){
+    selected={x,y};
+  } else {
+    selected=null;
+  }
   render();
 }
 
+// ================== HIGHLIGHT ==================
 function highlight(){
-  document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('sel','move'));
+  document.querySelectorAll('.overlay')
+    .forEach(o=>o.classList.remove('sel','move'));
   if(!selected) return;
-  const idx = selected.y*COLS+selected.x;
-  boardEl.children[idx].querySelector('.overlay').classList.add('sel');
-  snakeMoves(selected.x,selected.y,board[selected.y][selected.x].color)
-    .forEach(m=>{
-      const i=m.y*COLS+m.x;
-      boardEl.children[i].querySelector('.overlay').classList.add('move');
-    });
+
+  const i = selected.y*COLS+selected.x;
+  boardEl.children[i].querySelector('.overlay').classList.add('sel');
+
+  generateMoves(selected.x,selected.y).forEach(m=>{
+    const j = m.y*COLS+m.x;
+    boardEl.children[j].querySelector('.overlay')
+      .classList.add('move');
+  });
 }
 
-/* 🐍 ЗМЕЯ — МАЯТНИК (ПРАВИЛЬНЫЙ) */
-function snakeMoves(x,y,color){
-  const patterns = [
-    [[-1,-1],[1,-1],[-1,-1],[1,-1]],
-    [[1,-1],[-1,-1],[1,-1],[-1,-1]],
-    [[1,-1],[1,1],[1,-1],[1,1]],
-    [[1,1],[1,-1],[1,1],[1,-1]],
-    [[1,1],[-1,1],[1,1],[-1,1]],
-    [[-1,1],[1,1],[-1,1],[1,1]],
-    [[-1,1],[-1,-1],[-1,1],[-1,-1]],
-    [[-1,-1],[-1,1],[-1,-1],[-1,1]]
-  ];
+// ================== MOVE DISPATCH ==================
+function generateMoves(x,y){
+  const p=board[y][x];
+  if(!p) return [];
+  switch(p.type){
+    case 'king':   return genKing(x,y,p.color);
+    case 'queen':  return genQueen(x,y,p.color);
+    case 'rook':   return genRook(x,y,p.color);
+    case 'bishop': return genBishop(x,y,p.color);
+    case 'knight': return genKnight(x,y,p.color);
+    case 'pawn':   return genPawn(x,y,p.color);
+    case 'snake':  return genSnake(x,y,p.color);
+    default: return [];
+  }
+}
 
+// ================== RAYS ==================
+function rayMoves(x,y,dirs,color){
   const res=[];
-  for(const seq of patterns){
-    let cx=x, cy=y;
-    for(const d of seq){
-      cx+=d[0]; cy+=d[1];
-      if(!inside(cx,cy)) break;
-      if(board[cy][cx] && board[cy][cx].color===color) break;
-      res.push({x:cx,y:cy});
-      if(board[cy][cx]) break;
+  for(const d of dirs){
+    let nx=x+d[0], ny=y+d[1];
+    while(inside(nx,ny)){
+      const t=board[ny][nx];
+      if(!t) res.push({x:nx,y:ny});
+      else{
+        if(t.color!==color) res.push({x:nx,y:ny});
+        break;
+      }
+      nx+=d[0]; ny+=d[1];
     }
   }
   return res;
 }
 
+// ================== PIECES ==================
+function genKing(x,y,c){
+  const d=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+  return d
+    .map(v=>({x:x+v[0],y:y+v[1]}))
+    .filter(m=>inside(m.x,m.y) && !isAlly(board[m.y][m.x],c));
+}
+
+function genQueen(x,y,c){
+  return rayMoves(x,y,
+    [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],c);
+}
+
+function genRook(x,y,c){
+  return rayMoves(x,y,[[1,0],[-1,0],[0,1],[0,-1]],c);
+}
+
+function genBishop(x,y,c){
+  return rayMoves(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],c);
+}
+
+function genKnight(x,y,c){
+  const d=[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+  return d
+    .map(v=>({x:x+v[0],y:y+v[1]}))
+    .filter(m=>inside(m.x,m.y) && !isAlly(board[m.y][m.x],c));
+}
+
+function genPawn(x,y,c){
+  const dir = c==='w'?-1:1;
+  const res=[];
+  const ny=y+dir;
+
+  if(inside(x,ny) && !board[ny][x]) res.push({x,y:ny});
+
+  const start = c==='w'?6:1;
+  if(y===start && !board[ny][x] && !board[y+2*dir][x])
+    res.push({x,y:y+2*dir});
+
+  for(const dx of [-1,1]){
+    const nx=x+dx;
+    if(inside(nx,ny) && board[ny][nx] && board[ny][nx].color!==c)
+      res.push({x:nx,y:ny});
+  }
+  return res;
+}
+
+// ================== 🐍 SNAKE ==================
+function genSnake(x,y,color){
+  const diag={
+    NE:[1,-1], NW:[-1,-1],
+    SE:[1,1],  SW:[-1,1]
+  };
+
+  const patterns=[
+    ['NW','NE'],['NE','NW'],
+    ['NE','SE'],['SE','NE'],
+    ['SE','SW'],['SW','SE'],
+    ['SW','NW'],['NW','SW']
+  ];
+
+  const res=[];
+  for(const pat of patterns){
+    let cx=x, cy=y;
+    for(let step=1;step<=4;step++){
+      const d=diag[pat[(step-1)%2]];
+      cx+=d[0]; cy+=d[1];
+      if(!inside(cx,cy)) break;
+      const t=board[cy][cx];
+      if(t && t.color===color) break;
+      res.push({x:cx,y:cy});
+      if(t) break;
+    }
+  }
+
+  const uniq={};
+  return res.filter(m=>{
+    const k=m.x+','+m.y;
+    if(uniq[k]) return false;
+    uniq[k]=1;
+    return true;
+  });
+}
+
+// ================== START ==================
 setup();
 render();
