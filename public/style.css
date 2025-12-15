@@ -1,83 +1,98 @@
+/* ===== ОБЩЕЕ ===== */
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #ddd;
+  background: #e0e0e0;
+  font-family: Arial, sans-serif;
 }
 
-.game-wrapper {
+.page {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
   padding: 20px;
 }
 
-/* 🟩 ДОСКА */
+/* ===== ДОСКА ===== */
 .board {
   display: grid;
   grid-template-columns: repeat(10, 80px);
   grid-template-rows: repeat(8, 80px);
-  border: 5px solid black;
+  border: 6px solid #000;
+  background: #000;
 }
 
-/* 🟫 КЛЕТКА */
+/* ===== КЛЕТКА ===== */
 .cell {
   position: relative;
   width: 80px;
   height: 80px;
 }
 
-/* ФОН КЛЕТКИ */
 .cell-bg {
   position: absolute;
   inset: 0;
   background-size: cover;
 }
 
-/* ФИГУРА */
-.piece {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-/* СЛОЙ ДЛЯ КЛИКОВ */
+/* ===== ПЕРЕКРЫТИЕ (КЛИКИ / ПОДСВЕТКА) ===== */
 .overlay {
   position: absolute;
   inset: 0;
   cursor: pointer;
 }
 
-/* ПОДСВЕТКИ */
-.overlay.sel {
-  background: rgba(255, 0, 0, 0.4);
+/* выбранная фигура — тёмно-зелёная */
+.overlay.highlight-selected {
+  background: rgba(0, 90, 0, 0.45);
 }
 
-.overlay.move {
-  background: rgba(0, 255, 0, 0.35);
+/* возможный ход */
+.overlay.highlight-move {
+  background: rgba(0, 255, 0, 0.25);
 }
 
-/* ВЗЯТЫЕ ФИГУРЫ */
+/* возможное взятие */
+.overlay.highlight-capture {
+  background: rgba(140, 0, 0, 0.45);
+}
+
+/* ===== ФИГУРА ===== */
+.piece {
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ===== ВЗЯТЫЕ ФИГУРЫ ===== */
+.captured-wrapper {
+  width: 200px;
+  text-align: center;
+}
+
+.captured-wrapper h3 {
+  margin: 5px 0;
+}
+
 .captured {
+  min-height: 100px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 90px;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  padding: 5px;
+  background: #ccc;
+  border: 2px solid #000;
 }
 
-.cap-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.captured img {
+  width: 36px;
+  height: 36px;
 }
-
-.cap-row img {
-  width: 40px;
-  height: 40px;
-}
-
