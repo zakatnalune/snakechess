@@ -95,22 +95,31 @@ function clickCell(x,y){
 }
 
 // ================= MOVE =================
-function movePiece(sx,sy,tx,ty){
+function movePiece(sx, sy, tx, ty) {
   const piece = board[sy][sx];
-  const target = board[ty][tx];
 
-  // ВЗЯТИЕ
-  if(target){
-    if(target.color === 'w') {
-      capWhite.push(target);
+  // рокировка
+  if (piece.type === 'king' && Math.abs(tx - sx) === 2) {
+    if (tx > sx) {
+      // короткая
+      board[ty][tx - 1] = board[ty][9];
+      board[ty][9] = null;
     } else {
-      capBlack.push(target);
+      // длинная
+      board[ty][tx + 1] = board[ty][0];
+      board[ty][0] = null;
     }
   }
 
-  board[ty][tx] = {...piece, moved:true};
+  const target = board[ty][tx];
+  if (target) {
+    (target.color === 'w' ? capWhite : capBlack).push(target);
+  }
+
+  board[ty][tx] = { ...piece, moved: true };
   board[sy][sx] = null;
 }
+
 
 
 // ================= HIGHLIGHT =================
@@ -186,6 +195,34 @@ function genKing(x,y,c,s){
   return [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
     .map(v=>({x:x+v[0],y:y+v[1]}))
     .filter(m=>inside(m.x,m.y)&&!isAlly(s[m.y][m.x],c));
+	// рокировка
+if (!state[y][x].moved && !isKingInCheck(c, state)) {
+  // короткая
+  const rookX = 9;
+  if (
+    state[y][rookX] &&
+    state[y][rookX].type === 'rook' &&
+    !state[y][rookX].moved &&
+    !state[y][x + 1] &&
+    !state[y][x + 2]
+  ) {
+    res.push({ x: x + 2, y, castling: 'short' });
+  }
+
+  // длинная
+  const rookLX = 0;
+  if (
+    state[y][rookLX] &&
+    state[y][rookLX].type === 'rook' &&
+    !state[y][rookLX].moved &&
+    !state[y][x - 1] &&
+    !state[y][x - 2] &&
+    !state[y][x - 3]
+  ) {
+    res.push({ x: x - 2, y, castling: 'long' });
+  }
+}
+
 }
 
 function genKnight(x,y,c,s){
