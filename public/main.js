@@ -249,7 +249,7 @@ function genSnake(x,y,c,s){
   const r=[];
   for(const pat of p){
     let cx=x,cy=y;
-    for(let i=0;i<4;i++){
+    for(let i=0;i<3;i++){
       const v=d[pat[i%2]];
       cx+=v[0]; cy+=v[1];
       if(!inside(cx,cy)) break;
