@@ -96,19 +96,7 @@ body {
   margin-bottom: 8px;
 }
 
-.captured {
-  width: 80px;
-  min-height: 640px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 4px;
-}
 
-.captured img {
-  width: 36px;
-  height: 36px;
-}
 
 /* ================== GAME STATE ================== */
 .game-status {
