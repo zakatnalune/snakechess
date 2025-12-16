@@ -289,20 +289,32 @@ function hasLegalMove(c){
   return false;
 }
 
-function checkGameEnd(){
-  const inCheck = isKingInCheck(turn, board);
-  const hasMoves = hasLegalMove(turn);
+function checkGameEnd() {
+  const color = turn;
+  let hasMoves = false;
 
-  if(!hasMoves){
-    gameOver = true;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const p = board[y][x];
+      if (p && p.color === color) {
+        if (getLegalMoves(x, y).length > 0) {
+          hasMoves = true;
+          break;
+        }
+      }
+    }
+    if (hasMoves) break;
+  }
 
-    if(inCheck){
-      alert(`МАТ! ${turn === 'w' ? 'Белым' : 'Чёрным'} объявлен мат`);
+  if (!hasMoves) {
+    if (isKingInCheck(color, board)) {
+      alert(`Мат! ${color === 'w' ? 'Чёрные' : 'Белые'} победили`);
     } else {
-      alert('ПАТ! Ничья');
+      alert('Пат. Ничья');
     }
   }
 }
+
 
 
 
@@ -320,15 +332,18 @@ function savePosition(){
 }
 
 // ================= VISUAL CHECK =================
-function highlightCheck(){
-  ['w','b'].forEach(c=>{
-    if(isKingInCheck(c,board)){
-      const k=findKing(c,board);
-      const o=document.querySelector(`.cell[data-x='${k.x}'][data-y='${k.y}'] .overlay`);
-      o.classList.add('highlight-check');
-    }
-  });
+function highlightCheck() {
+  const kingPos = findKing(turn, board);
+  if (!kingPos) return;
+
+  if (isKingInCheck(turn, board)) {
+    const ov = document.querySelector(
+      `.cell[data-x='${kingPos.x}'][data-y='${kingPos.y}'] .overlay`
+    );
+    if (ov) ov.classList.add('king-in-check');
+  }
 }
+
 
 // ================= START =================
 setup();
