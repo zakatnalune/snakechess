@@ -96,21 +96,22 @@ function clickCell(x,y){
 
 // ================= MOVE =================
 function movePiece(sx,sy,tx,ty){
-  const p = board[sy][sx];
-  const t = board[ty][tx];
-  if(t) (t.color==='w'?capWhite:capBlack).push(t);
+  const piece = board[sy][sx];
+  const target = board[ty][tx];
 
-  // рокировка
-  if(p.type==='king' && Math.abs(tx-sx)===2){
-    const rookFrom = tx>sx ? COLS-1 : 0;
-    const rookTo = tx>sx ? tx-1 : tx+1;
-    board[ty][rookTo] = {...board[ty][rookFrom], moved:true};
-    board[ty][rookFrom] = null;
+  // ВЗЯТИЕ
+  if(target){
+    if(target.color === 'w') {
+      capWhite.push(target);
+    } else {
+      capBlack.push(target);
+    }
   }
 
-  board[ty][tx] = {...p, moved:true};
+  board[ty][tx] = {...piece, moved:true};
   board[sy][sx] = null;
 }
+
 
 // ================= HIGHLIGHT =================
 function refreshHighlights(){
@@ -193,7 +194,7 @@ function genKnight(x,y,c,s){
     .filter(m=>inside(m.x,m.y)&&!isAlly(s[m.y][m.x],c));
 }
 
-// ✔ ИСПРАВЛЕННАЯ ПЕШКА
+//  ПЕШКА
 function genPawn(x,y,c,s){
   const r=[];
   const p=s[y][x];
