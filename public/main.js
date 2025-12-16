@@ -17,13 +17,10 @@ let board = [];
 let selected = null;
 let turn = 'w';
 let history = [];
-let capWhite = [], capBlack = [];
 let gameOver = false;
 
 // ================= DOM =================
 const boardEl = document.getElementById('board');
-const capWhiteEl = document.getElementById('cap-white');
-const capBlackEl = document.getElementById('cap-black');
 
 // ================= HELPERS =================
 function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
@@ -70,7 +67,6 @@ function render(){
     boardEl.appendChild(cell);
   }
   refreshHighlights();
-  renderCaptured();
   highlightCheck();
 }
 
@@ -101,19 +97,12 @@ function movePiece(sx, sy, tx, ty) {
   // рокировка
   if (piece.type === 'king' && Math.abs(tx - sx) === 2) {
     if (tx > sx) {
-      // короткая
       board[ty][tx - 1] = board[ty][9];
       board[ty][9] = null;
     } else {
-      // длинная
       board[ty][tx + 1] = board[ty][0];
       board[ty][0] = null;
     }
-  }
-
-  const target = board[ty][tx];
-  if (target) {
-    (target.color === 'w' ? capWhite : capBlack).push(target);
   }
 
   board[ty][tx] = { ...piece, moved: true };
