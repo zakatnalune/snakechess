@@ -1,23 +1,25 @@
-/* ===== ОБЩЕЕ ===== */
+/* ================== RESET ================== */
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
-  background: #e0e0e0;
+  background: #e6e6e6;
   font-family: Arial, sans-serif;
 }
 
-.page {
+/* ================== LAYOUT ================== */
+.game-wrapper {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 20px;
-  padding: 20px;
+  gap: 24px;
+  padding: 24px;
 }
 
-/* ===== ДОСКА ===== */
+/* ================== BOARD ================== */
 .board {
   display: grid;
   grid-template-columns: repeat(10, 80px);
@@ -26,59 +28,72 @@ body {
   background: #000;
 }
 
-/* ===== КЛЕТКА ===== */
+/* ================== CELL ================== */
 .cell {
-  position: relative;
   width: 80px;
   height: 80px;
+  position: relative;
 }
 
 .cell-bg {
-  position: absolute;
-  inset: 0;
+  width: 100%;
+  height: 100%;
   background-size: cover;
+  background-position: center;
 }
 
-/* ===== ПЕРЕКРЫТИЕ (КЛИКИ / ПОДСВЕТКА) ===== */
+/* ================== PIECES ================== */
+.piece {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 72px;
+  height: 72px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ================== OVERLAY ================== */
 .overlay {
   position: absolute;
   inset: 0;
   cursor: pointer;
+  z-index: 3;
 }
 
-/* выбранная фигура — тёмно-зелёная */
-.overlay.highlight-selected {
-  background: rgba(0, 90, 0, 0.45);
+/* ================== HIGHLIGHTS ================== */
+
+/* выбранная фигура */
+.highlight-selected {
+  background: rgba(0, 100, 0, 0.45);
 }
 
-/* возможный ход */
-.overlay.highlight-move {
-  background: rgba(0, 255, 0, 0.25);
+/* обычный возможный ход */
+.highlight-move {
+  background: rgba(0, 160, 0, 0.35);
 }
 
-/* возможное взятие */
-.overlay.highlight-capture {
-  background: rgba(140, 0, 0, 0.45);
+/* взятие */
+.highlight-capture {
+  background: rgba(160, 0, 0, 0.45);
 }
 
-/* ===== ФИГУРА ===== */
-.piece {
-  position: absolute;
-  inset: 6px;
-  width: calc(100% - 12px);
-  height: calc(100% - 12px);
-  pointer-events: none;
-  user-select: none;
+/* король под шахом / матом */
+.king-in-check {
+  background: rgba(200, 0, 0, 0.55) !important;
 }
 
-/* ===== ВЗЯТЫЕ ФИГУРЫ ===== */
-.captured-wrapper {
-  width: 200px;
-  text-align: center;
+/* ================== CAPTURED ================== */
+.captured-wrap {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.captured-wrapper h3 {
-  margin: 5px 0;
+.captured-title {
+  font-weight: bold;
+  margin-bottom: 8px;
 }
 
 .captured {
@@ -86,7 +101,8 @@ body {
   min-height: 640px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding-top: 4px;
 }
 
 .captured img {
@@ -94,12 +110,9 @@ body {
   height: 36px;
 }
 
-/* король под шахом */
-.overlay.highlight-check {
-  background: rgba(200, 0, 0, 0.45);
-}
-
-/* король под матом */
-.overlay.highlight-mate {
-  background: rgba(120, 0, 0, 0.7);
+/* ================== GAME STATE ================== */
+.game-status {
+  margin-top: 12px;
+  font-weight: bold;
+  text-align: center;
 }
