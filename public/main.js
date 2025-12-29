@@ -1,36 +1,36 @@
-// ================= CONFIG =================
+// ================== CONFIG ==================
 const COLS = 10;
 const ROWS = 8;
 const IMG = 'img/';
 
-const cellsImg = { w:'wcell.jpg', b:'bcell.jpg' };
+const cellsImg = { w: 'wcell.jpg', b: 'bcell.jpg' };
 
 const piecesImg = {
   w:{rook:'wrook.png',knight:'wknight.png',bishop:'wbishop.png',queen:'wqueen.png',king:'wking.png',pawn:'wpawn.png',snake:'wsnake.png'},
   b:{rook:'brook.png',knight:'bknight.png',bishop:'bbishop.png',queen:'bqueen.png',king:'bking.png',pawn:'bpawn.png',snake:'bsnake.png'}
 };
 
-const backRank = ['rook','knight','bishop','snake','queen','king','snake','bishop','knight','rook'];
+const backRank = [
+  'rook','knight','bishop','snake',
+  'queen','king',
+  'snake','bishop','knight','rook'
+];
 
-// ================= STATE =================
+// ================== STATE ==================
 let board = [];
 let selected = null;
 let turn = 'w';
-let history = [];
 let gameOver = false;
-let promotion = null;
-// { x, y, color }
 
-
-// ================= DOM =================
-const boardEl = document.getElementById('board');
-
-// ================= HELPERS =================
+ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
 function isAlly(p,c){ return p && p.color===c; }
 function cloneBoard(b){ return b.map(r=>r.map(c=>c?{...c}:null)); }
 
-// ================= SETUP =================
+ИНИЦИАЛИЗАЦИЯ И РЕНДЕР
+
+const boardEl = document.getElementById('board');
+
 function setup(){
   board = Array.from({length:ROWS},()=>Array(COLS).fill(null));
   for(let x=0;x<COLS;x++){
@@ -39,218 +39,205 @@ function setup(){
     board[6][x]={type:'pawn',color:'w',moved:false};
     board[7][x]={type:backRank[x],color:'w',moved:false};
   }
-  history=[];
 }
 
-// ================= RENDER =================
 function render(){
   boardEl.innerHTML='';
-  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-    const cell=document.createElement('div');
-    cell.className='cell';
-    cell.dataset.x=x; cell.dataset.y=y;
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const cell=document.createElement('div');
+      cell.className='cell';
+      cell.dataset.x=x; cell.dataset.y=y;
 
-    const bg=document.createElement('div');
-    bg.className='cell-bg';
-    bg.style.backgroundImage=`url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
-    cell.appendChild(bg);
+      const bg=document.createElement('div');
+      bg.className='cell-bg';
+      bg.style.backgroundImage=`url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
+      cell.appendChild(bg);
 
-    const ov=document.createElement('div');
-    ov.className='overlay';
-    ov.onclick=()=>clickCell(x,y);
-    cell.appendChild(ov);
+      const ov=document.createElement('div');
+      ov.className='overlay';
+      ov.onclick=()=>clickCell(x,y);
+      cell.appendChild(ov);
 
-    const p=board[y][x];
-    if(p){
-      const img=document.createElement('img');
-      img.className='piece';
-      img.src=IMG+piecesImg[p.color][p.type];
-      cell.appendChild(img);
+      const p=board[y][x];
+      if(p){
+        const img=document.createElement('img');
+        img.className='piece';
+        img.src=IMG+piecesImg[p.color][p.type];
+        cell.appendChild(img);
+      }
+      boardEl.appendChild(cell);
     }
-    boardEl.appendChild(cell);
   }
-  refreshHighlights();
-  highlightCheck();
+  highlight();
 }
-
-// ================= INPUT =================
+ВВОД И ХОДЫ
 function clickCell(x,y){
-	if(gameOver) return;
+  if(gameOver) return;
+
   if(selected){
-    const moves=getLegalMoves(selected.x,selected.y);
+    const moves = getLegalMoves(selected.x,selected.y);
     if(moves.some(m=>m.x===x && m.y===y)){
       movePiece(selected.x,selected.y,x,y);
       selected=null;
-      turn = turn==='w'?'b':'w';
-      savePosition();
       render();
       checkGameEnd();
       return;
     }
   }
-  if(board[y][x] && board[y][x].color===turn) selected={x,y};
-  else selected=null;
+
+  if(board[y][x] && board[y][x].color===turn){
+    selected={x,y};
+  } else {
+    selected=null;
+  }
   render();
 }
+ПЕРЕМЕЩЕНИЕ + ПРЕВРАЩЕНИЕ ПЕШКИ
+function movePiece(sx,sy,tx,ty){
+  const piece=board[sy][sx];
+  board[ty][tx]={...piece,moved:true};
+  board[sy][sx]=null;
 
-// ================= MOVE =================
-function movePiece(sx, sy, tx, ty){
-  const piece = board[sy][sx];
-  const target = board[ty][tx];
+  const moved=board[ty][tx];
 
-  board[ty][tx] = { ...piece, moved: true };
-  board[sy][sx] = null;
+  // pawn promotion
+  if(moved.type==='pawn'){
+    const lastRank =
+      (moved.color==='w' && ty===0) ||
+      (moved.color==='b' && ty===ROWS-1);
 
-  // === ПРОВЕРКА ПРЕВРАЩЕНИЯ ПЕШКИ ===
-  if(piece.type === 'pawn'){
-    if(
-      (piece.color === 'w' && ty === 0) ||
-      (piece.color === 'b' && ty === ROWS - 1)
-    ){
-      promotion = { x: tx, y: ty, color: piece.color };
-      render();
-      return; // ⛔ НЕ МЕНЯЕМ ХОД
+    if(lastRank){
+      const choice = prompt(
+        'queen, rook, bishop, knight, snake',
+        'queen'
+      );
+      const ok=['queen','rook','bishop','knight','snake'];
+      moved.type = ok.includes(choice)?choice:'queen';
     }
   }
 
-  turn = turn === 'w' ? 'b' : 'w';
+  turn = turn==='w'?'b':'w';
+}
+ШАХ / МАТ / ПАТ
+function findKing(color,b){
+  for(let y=0;y<ROWS;y++)
+    for(let x=0;x<COLS;x++){
+      const p=b[y][x];
+      if(p && p.type==='king' && p.color===color)
+        return {x,y};
+    }
+  return null;
 }
 
+function isKingInCheck(color,b){
+  const k=findKing(color,b);
+  if(!k) return false;
+  const enemy=color==='w'?'b':'w';
 
-
-// ================= HIGHLIGHT =================
-function refreshHighlights(){
-  document.querySelectorAll('.overlay').forEach(o=>{
-    o.classList.remove('highlight-selected','highlight-move','highlight-capture');
-  });
-  if(!selected) return;
-
-  document.querySelector(`.cell[data-x='${selected.x}'][data-y='${selected.y}'] .overlay`)
-    ?.classList.add('highlight-selected');
-
-  getLegalMoves(selected.x,selected.y).forEach(m=>{
-    const o=document.querySelector(`.cell[data-x='${m.x}'][data-y='${m.y}'] .overlay`);
-    if(!o) return;
-    o.classList.add(board[m.y][m.x] ? 'highlight-capture' : 'highlight-move');
-  });
-  if (isKingInCheck(turn, board)) {
-  const k = findKing(turn, board);
-  const ov = document.querySelector(
-    `.cell[data-x='${k.x}'][data-y='${k.y}'] .overlay`
-  );
-  ov?.classList.add(isCheckmate(turn) ? 'highlight-mate' : 'highlight-check');
+  for(let y=0;y<ROWS;y++)
+    for(let x=0;x<COLS;x++){
+      const p=b[y][x];
+      if(p && p.color===enemy){
+        const m=generateMoves(x,y,b,true);
+        if(m.some(v=>v.x===k.x && v.y===k.y)) return true;
+      }
+    }
+  return false;
 }
 
+function checkGameEnd(){
+  const movesExist = anyLegalMoves(turn);
+  const inCheck = isKingInCheck(turn,board);
+
+  if(!movesExist){
+    gameOver=true;
+    alert(inCheck?'Мат':'Пат');
+  }
 }
 
-// ================= LEGAL MOVES =================
+function anyLegalMoves(color){
+  for(let y=0;y<ROWS;y++)
+    for(let x=0;x<COLS;x++){
+      const p=board[y][x];
+      if(p && p.color===color){
+        if(getLegalMoves(x,y).length) return true;
+      }
+    }
+  return false;
+}
+ЛЕГАЛЬНЫЕ ХОДЫ
 function getLegalMoves(x,y){
-  const p=board[y][x];
-  if(!p) return [];
-  let raw = generateMoves(x,y,board);
-  if(p.type==='king') raw.push(...castleMoves(x,y,p.color));
-  return raw.filter(m=>{
-    const copy = cloneBoard(board);
+  const raw=generateMoves(x,y,board,false);
+  const legal=[];
+  for(const m of raw){
+    const copy=cloneBoard(board);
     copy[m.y][m.x]=copy[y][x];
     copy[y][x]=null;
-    return !isKingInCheck(p.color,copy);
-  });
+    if(!isKingInCheck(board[y][x].color,copy))
+      legal.push(m);
+  }
+  return legal;
 }
-
-// ================= MOVE GENERATION =================
-function generateMoves(x,y,state){
-  const p=state[y][x];
+ГЕНЕРАЦИЯ ХОДОВ ФИГУР
+function generateMoves(x,y,b,forCheck){
+  const p=b[y][x];
   if(!p) return [];
   switch(p.type){
-    case 'king': return genKing(x,y,p.color,state);
-    case 'queen': return ray(x,y,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],p.color,state);
-    case 'rook': return ray(x,y,[[1,0],[-1,0],[0,1],[0,-1]],p.color,state);
-    case 'bishop': return ray(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],p.color,state);
-    case 'knight': return genKnight(x,y,p.color,state);
-    case 'pawn': return genPawn(x,y,p.color,state);
-    case 'snake': return genSnake(x,y,p.color,state);
+    case 'king': return genKing(x,y,p.color,b);
+    case 'queen': return genQueen(x,y,p.color,b);
+    case 'rook': return genRook(x,y,p.color,b);
+    case 'bishop': return genBishop(x,y,p.color,b);
+    case 'knight': return genKnight(x,y,p.color,b);
+    case 'pawn': return genPawn(x,y,p.color,b);
+    case 'snake': return genSnake(x,y,p.color,b);
   }
   return [];
 }
 
-function ray(x,y,dirs,c,s){
+function ray(x,y,dirs,c,b){
   const r=[];
   for(const d of dirs){
-    let nx=x+d[0], ny=y+d[1];
+    let nx=x+d[0],ny=y+d[1];
     while(inside(nx,ny)){
-      const t=s[ny][nx];
+      const t=b[ny][nx];
       if(!t) r.push({x:nx,y:ny});
-      else { if(t.color!==c) r.push({x:nx,y:ny}); break; }
+      else{ if(t.color!==c) r.push({x:nx,y:ny}); break; }
       nx+=d[0]; ny+=d[1];
     }
   }
   return r;
 }
 
-function genKing(x,y,c,s){
+const genQueen=(x,y,c,b)=>ray(x,y,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],c,b);
+const genRook=(x,y,c,b)=>ray(x,y,[[1,0],[-1,0],[0,1],[0,-1]],c,b);
+const genBishop=(x,y,c,b)=>ray(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],c,b);
+
+function genKing(x,y,c,b){
   return [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
     .map(v=>({x:x+v[0],y:y+v[1]}))
-    .filter(m=>inside(m.x,m.y)&&!isAlly(s[m.y][m.x],c));
-	// рокировка
-if (!state[y][x].moved && !isKingInCheck(c, state)) {
-  // короткая
-  const rookX = 9;
-  if (
-    state[y][rookX] &&
-    state[y][rookX].type === 'rook' &&
-    !state[y][rookX].moved &&
-    !state[y][x + 1] &&
-    !state[y][x + 2]
-  ) {
-    res.push({ x: x + 2, y, castling: 'short' });
-  }
-
-  // длинная
-  const rookLX = 0;
-  if (
-    state[y][rookLX] &&
-    state[y][rookLX].type === 'rook' &&
-    !state[y][rookLX].moved &&
-    !state[y][x - 1] &&
-    !state[y][x - 2] &&
-    !state[y][x - 3]
-  ) {
-    res.push({ x: x - 2, y, castling: 'long' });
-  }
+    .filter(m=>inside(m.x,m.y)&&!isAlly(b[m.y][m.x],c));
 }
 
+function genKnight(x,y,c,b){
+  const d=[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+  return d.map(v=>({x:x+v[0],y:y+v[1]}))
+    .filter(m=>inside(m.x,m.y)&&!isAlly(b[m.y][m.x],c));
 }
 
-function genKnight(x,y,c,s){
-  return [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]
-    .map(v=>({x:x+v[0],y:y+v[1]}))
-    .filter(m=>inside(m.x,m.y)&&!isAlly(s[m.y][m.x],c));
-}
-
-//  ПЕШКА
-function genPawn(x,y,c,s){
-  const r=[];
-  const p=s[y][x];
+function genPawn(x,y,c,b){
   const dir=c==='w'?-1:1;
-  const start=c==='w'?6:1;
-
-  if(inside(x,y+dir)&&!s[y+dir][x]){
-    r.push({x,y:y+dir});
-    if(y===start && !p.moved && !s[y+2*dir][x]){
-      r.push({x,y:y+2*dir});
-    }
-  }
-  for(const dx of[-1,1]){
-    const nx=x+dx, ny=y+dir;
-    if(inside(nx,ny)&&s[ny][nx]&&s[ny][nx].color!==c){
+  const r=[];
+  if(inside(x,y+dir)&&!b[y+dir][x]) r.push({x,y:y+dir});
+  for(const dx of [-1,1]){
+    const nx=x+dx,ny=y+dir;
+    if(inside(nx,ny)&&b[ny][nx]&&b[ny][nx].color!==c)
       r.push({x:nx,y:ny});
-    }
   }
   return r;
 }
-
-// 🐍 SNAKE
-function genSnake(x,y,c,s){
+Змея три шага
+function genSnake(x,y,c,b){
   const d={NE:[1,-1],NW:[-1,-1],SE:[1,1],SW:[-1,1]};
   const p=[['NW','NE'],['NE','NW'],['NE','SE'],['SE','NE'],['SE','SW'],['SW','SE'],['SW','NW'],['NW','SW']];
   const r=[];
@@ -260,7 +247,7 @@ function genSnake(x,y,c,s){
       const v=d[pat[i%2]];
       cx+=v[0]; cy+=v[1];
       if(!inside(cx,cy)) break;
-      const t=s[cy][cx];
+      const t=b[cy][cx];
       if(t&&t.color===c) break;
       r.push({x:cx,y:cy});
       if(t) break;
@@ -269,116 +256,29 @@ function genSnake(x,y,c,s){
   return [...new Map(r.map(m=>[m.x+','+m.y,m])).values()];
 }
 
-// ================= CHECK =================
-function findKing(c,s){
-  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-    const p=s[y][x];
-    if(p&&p.type==='king'&&p.color===c) return {x,y};
-  }
-  return null;
-}
+Подсветка 
+function highlight(){
+  document.querySelectorAll('.overlay')
+    .forEach(o=>o.className='overlay');
 
-function isSquareAttacked(x,y,c,state){
-  const e=c==='w'?'b':'w';
-  for(let yy=0;yy<ROWS;yy++)for(let xx=0;xx<COLS;xx++){
-    const p=state[yy][xx];
-    if(p&&p.color===e){
-      if(generateMoves(xx,yy,state).some(m=>m.x===x&&m.y===y)) return true;
+  if(!selected) return;
+
+  document
+    .querySelector(`.cell[data-x='${selected.x}'][data-y='${selected.y}'] .overlay`)
+    ?.classList.add('highlight-selected');
+
+  const moves=getLegalMoves(selected.x,selected.y);
+  const c=board[selected.y][selected.x].color;
+
+  moves.forEach(m=>{
+    const o=document
+      .querySelector(`.cell[data-x='${m.x}'][data-y='${m.y}'] .overlay`);
+    if(o){
+      o.classList.add(
+        board[m.y][m.x]?'highlight-capture':'highlight-move'
+      );
     }
-  }
-  return false;
+  });
 }
-
-function isKingInCheck(c,state){
-  const k=findKing(c,state);
-  return k ? isSquareAttacked(k.x,k.y,c,state) : false;
-}
-
-// ================= CASTLING =================
-function castleMoves(x,y,c){
-  const res=[];
-  const row=c==='w'?7:0;
-  const king=board[row][5];
-  if(!king||king.moved||isKingInCheck(c,board)) return res;
-
-  if(board[row][9]?.type==='rook'&&!board[row][9].moved &&
-     !board[row][6]&&!board[row][7] &&
-     !isSquareAttacked(6,row,c,board)&&!isSquareAttacked(7,row,c,board)){
-    res.push({x:7,y:row});
-  }
-  if(board[row][0]?.type==='rook'&&!board[row][0].moved &&
-     !board[row][1]&&!board[row][2]&&!board[row][3] &&
-     !isSquareAttacked(4,row,c,board)&&!isSquareAttacked(3,row,c,board)){
-    res.push({x:3,y:row});
-  }
-  return res;
-}
-
-// ================= END GAME =================
-function hasLegalMove(c){
-  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-    if(board[y][x]?.color===c && getLegalMoves(x,y).length) return true;
-  }
-  return false;
-}
-
-function checkGameEnd() {
-  const color = turn;
-  let hasMoves = false;
-
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      const p = board[y][x];
-      if (p && p.color === color) {
-        if (getLegalMoves(x, y).length > 0) {
-          hasMoves = true;
-          break;
-        }
-      }
-    }
-    if (hasMoves) break;
-  }
-
-  if (!hasMoves) {
-    if (isKingInCheck(color, board)) {
-      alert(`Мат! ${color === 'w' ? 'Чёрные' : 'Белые'} победили`);
-    } else {
-      alert('Пат. Ничья');
-    }
-  }
-}
-
-
-
-
-// ================= REPETITION =================
-function serialize(){
-  return board.map(r=>r.map(p=>p?`${p.color}${p.type[0]}`:'..').join('')).join('/')+turn;
-}
-
-function savePosition(){
-  const s=serialize();
-  history.push(s);
-  if(history.filter(x=>x===s).length===3){
-    alert('НИЧЬЯ (3 повтора)');
-  }
-}
-
-// ================= VISUAL CHECK =================
-function highlightCheck() {
-  const kingPos = findKing(turn, board);
-  if (!kingPos) return;
-
-  if (isKingInCheck(turn, board)) {
-    const ov = document.querySelector(
-      `.cell[data-x='${kingPos.x}'][data-y='${kingPos.y}'] .overlay`
-    );
-    if (ov) ov.classList.add('king-in-check');
-  }
-}
-
-
-// ================= START =================
 setup();
-savePosition();
 render();
