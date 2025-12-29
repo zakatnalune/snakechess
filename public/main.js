@@ -18,6 +18,9 @@ let selected = null;
 let turn = 'w';
 let history = [];
 let gameOver = false;
+let promotion = null;
+// { x, y, color }
+
 
 // ================= DOM =================
 const boardEl = document.getElementById('board');
@@ -91,22 +94,26 @@ function clickCell(x,y){
 }
 
 // ================= MOVE =================
-function movePiece(sx, sy, tx, ty) {
+function movePiece(sx, sy, tx, ty){
   const piece = board[sy][sx];
-
-  // рокировка
-  if (piece.type === 'king' && Math.abs(tx - sx) === 2) {
-    if (tx > sx) {
-      board[ty][tx - 1] = board[ty][9];
-      board[ty][9] = null;
-    } else {
-      board[ty][tx + 1] = board[ty][0];
-      board[ty][0] = null;
-    }
-  }
+  const target = board[ty][tx];
 
   board[ty][tx] = { ...piece, moved: true };
   board[sy][sx] = null;
+
+  // === ПРОВЕРКА ПРЕВРАЩЕНИЯ ПЕШКИ ===
+  if(piece.type === 'pawn'){
+    if(
+      (piece.color === 'w' && ty === 0) ||
+      (piece.color === 'b' && ty === ROWS - 1)
+    ){
+      promotion = { x: tx, y: ty, color: piece.color };
+      render();
+      return; // ⛔ НЕ МЕНЯЕМ ХОД
+    }
+  }
+
+  turn = turn === 'w' ? 'b' : 'w';
 }
 
 

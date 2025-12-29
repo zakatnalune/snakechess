@@ -104,3 +104,26 @@ body {
   font-weight: bold;
   text-align: center;
 }
+.promotion {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 1000;
+}
+
+.promotion img {
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  background: #222;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.promotion img:hover {
+  background: #444;
+}
