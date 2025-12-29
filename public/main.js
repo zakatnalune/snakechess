@@ -22,15 +22,14 @@ let selected = null;
 let turn = 'w';
 let gameOver = false;
 
-ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ================== HELPERS ==================
 function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
 function isAlly(p,c){ return p && p.color===c; }
 function cloneBoard(b){ return b.map(r=>r.map(c=>c?{...c}:null)); }
 
-ИНИЦИАЛИЗАЦИЯ И РЕНДЕР
-
 const boardEl = document.getElementById('board');
 
+// ================== SETUP ==================
 function setup(){
   board = Array.from({length:ROWS},()=>Array(COLS).fill(null));
   for(let x=0;x<COLS;x++){
@@ -41,6 +40,7 @@ function setup(){
   }
 }
 
+// ================== RENDER ==================
 function render(){
   boardEl.innerHTML='';
   for(let y=0;y<ROWS;y++){
@@ -51,7 +51,8 @@ function render(){
 
       const bg=document.createElement('div');
       bg.className='cell-bg';
-      bg.style.backgroundImage=`url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
+      bg.style.backgroundImage =
+        `url(${IMG}${((x+y)%2===0)?cellsImg.w:cellsImg.b})`;
       cell.appendChild(bg);
 
       const ov=document.createElement('div');
@@ -71,13 +72,14 @@ function render(){
   }
   highlight();
 }
-ВВОД И ХОДЫ
+
+// ================== INPUT ==================
 function clickCell(x,y){
   if(gameOver) return;
 
   if(selected){
-    const moves = getLegalMoves(selected.x,selected.y);
-    if(moves.some(m=>m.x===x && m.y===y)){
+    const moves=getLegalMoves(selected.x,selected.y);
+    if(moves.some(m=>m.x===x&&m.y===y)){
       movePiece(selected.x,selected.y,x,y);
       selected=null;
       render();
@@ -93,39 +95,36 @@ function clickCell(x,y){
   }
   render();
 }
-ПЕРЕМЕЩЕНИЕ + ПРЕВРАЩЕНИЕ ПЕШКИ
+
+// ================== MOVE ==================
 function movePiece(sx,sy,tx,ty){
   const piece=board[sy][sx];
   board[ty][tx]={...piece,moved:true};
   board[sy][sx]=null;
 
-  const moved=board[ty][tx];
+  const p=board[ty][tx];
 
-  // pawn promotion
-  if(moved.type==='pawn'){
-    const lastRank =
-      (moved.color==='w' && ty===0) ||
-      (moved.color==='b' && ty===ROWS-1);
-
-    if(lastRank){
-      const choice = prompt(
+  // Pawn promotion
+  if(p.type==='pawn'){
+    if((p.color==='w'&&ty===0)||(p.color==='b'&&ty===ROWS-1)){
+      const choice=prompt(
         'queen, rook, bishop, knight, snake',
         'queen'
       );
       const ok=['queen','rook','bishop','knight','snake'];
-      moved.type = ok.includes(choice)?choice:'queen';
+      p.type=ok.includes(choice)?choice:'queen';
     }
   }
 
   turn = turn==='w'?'b':'w';
 }
-ШАХ / МАТ / ПАТ
+
+// ================== CHECK / MATE / STALEMATE ==================
 function findKing(color,b){
   for(let y=0;y<ROWS;y++)
     for(let x=0;x<COLS;x++){
       const p=b[y][x];
-      if(p && p.type==='king' && p.color===color)
-        return {x,y};
+      if(p&&p.type==='king'&&p.color===color) return {x,y};
     }
   return null;
 }
@@ -138,49 +137,48 @@ function isKingInCheck(color,b){
   for(let y=0;y<ROWS;y++)
     for(let x=0;x<COLS;x++){
       const p=b[y][x];
-      if(p && p.color===enemy){
-        const m=generateMoves(x,y,b,true);
-        if(m.some(v=>v.x===k.x && v.y===k.y)) return true;
+      if(p&&p.color===enemy){
+        const m=generateMoves(x,y,b);
+        if(m.some(v=>v.x===k.x&&v.y===k.y)) return true;
       }
     }
   return false;
-}
-
-function checkGameEnd(){
-  const movesExist = anyLegalMoves(turn);
-  const inCheck = isKingInCheck(turn,board);
-
-  if(!movesExist){
-    gameOver=true;
-    alert(inCheck?'Мат':'Пат');
-  }
 }
 
 function anyLegalMoves(color){
   for(let y=0;y<ROWS;y++)
     for(let x=0;x<COLS;x++){
       const p=board[y][x];
-      if(p && p.color===color){
+      if(p&&p.color===color){
         if(getLegalMoves(x,y).length) return true;
       }
     }
   return false;
 }
-ЛЕГАЛЬНЫЕ ХОДЫ
+
+function checkGameEnd(){
+  const inCheck=isKingInCheck(turn,board);
+  if(!anyLegalMoves(turn)){
+    gameOver=true;
+    alert(inCheck?'Мат':'Пат');
+  }
+}
+
+// ================== LEGAL MOVES ==================
 function getLegalMoves(x,y){
-  const raw=generateMoves(x,y,board,false);
+  const raw=generateMoves(x,y,board);
   const legal=[];
   for(const m of raw){
     const copy=cloneBoard(board);
     copy[m.y][m.x]=copy[y][x];
     copy[y][x]=null;
-    if(!isKingInCheck(board[y][x].color,copy))
-      legal.push(m);
+    if(!isKingInCheck(board[y][x].color,copy)) legal.push(m);
   }
   return legal;
 }
-ГЕНЕРАЦИЯ ХОДОВ ФИГУР
-function generateMoves(x,y,b,forCheck){
+
+// ================== MOVE GENERATION ==================
+function generateMoves(x,y,b){
   const p=b[y][x];
   if(!p) return [];
   switch(p.type){
@@ -229,6 +227,11 @@ function genPawn(x,y,c,b){
   const dir=c==='w'?-1:1;
   const r=[];
   if(inside(x,y+dir)&&!b[y+dir][x]) r.push({x,y:y+dir});
+
+  const start=(c==='w'?6:1);
+  if(y===start && !b[y+dir][x] && !b[y+2*dir][x])
+    r.push({x,y:y+2*dir});
+
   for(const dx of [-1,1]){
     const nx=x+dx,ny=y+dir;
     if(inside(nx,ny)&&b[ny][nx]&&b[ny][nx].color!==c)
@@ -236,7 +239,8 @@ function genPawn(x,y,c,b){
   }
   return r;
 }
-Змея три шага
+
+// 🐍 SNAKE — 3 steps
 function genSnake(x,y,c,b){
   const d={NE:[1,-1],NW:[-1,-1],SE:[1,1],SW:[-1,1]};
   const p=[['NW','NE'],['NE','NW'],['NE','SE'],['SE','NE'],['SE','SW'],['SW','SE'],['SW','NW'],['NW','SW']];
@@ -256,10 +260,11 @@ function genSnake(x,y,c,b){
   return [...new Map(r.map(m=>[m.x+','+m.y,m])).values()];
 }
 
-Подсветка 
+// ================== HIGHLIGHT ==================
 function highlight(){
-  document.querySelectorAll('.overlay')
-    .forEach(o=>o.className='overlay');
+  document.querySelectorAll('.overlay').forEach(o=>{
+    o.className='overlay';
+  });
 
   if(!selected) return;
 
@@ -268,8 +273,6 @@ function highlight(){
     ?.classList.add('highlight-selected');
 
   const moves=getLegalMoves(selected.x,selected.y);
-  const c=board[selected.y][selected.x].color;
-
   moves.forEach(m=>{
     const o=document
       .querySelector(`.cell[data-x='${m.x}'][data-y='${m.y}'] .overlay`);
@@ -280,5 +283,7 @@ function highlight(){
     }
   });
 }
+
+// ================== START ==================
 setup();
 render();
