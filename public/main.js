@@ -157,16 +157,45 @@ function isKingInCheck(color,b){
 }
 
 function isSquareAttacked(x,y,by,b){
-  for(let yy=0;yy<ROWS;yy++)
+  for(let yy=0;yy<ROWS;yy++){
     for(let xx=0;xx<COLS;xx++){
       const p=b[yy][xx];
-      if(p && p.color===by){
-        const m=generateMoves(xx,yy,b);
-        if(m.some(v=>v.x===x&&v.y===y)) return true;
+      if(!p || p.color!==by) continue;
+
+      let moves=[];
+      switch(p.type){
+        case 'pawn': {
+          const dir = by==='w'?-1:1;
+          for(const dx of [-1,1]){
+            const nx=xx+dx, ny=yy+dir;
+            if(nx===x && ny===y) return true;
+          }
+          break;
+        }
+        case 'king': {
+          for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+            if(xx+dx===x && yy+dy===y) return true;
+          }
+          break;
+        }
+        case 'rook':
+          moves=genRook(xx,yy,by,b); break;
+        case 'bishop':
+          moves=genBishop(xx,yy,by,b); break;
+        case 'queen':
+          moves=genQueen(xx,yy,by,b); break;
+        case 'knight':
+          moves=genKnight(xx,yy,by,b); break;
+        case 'snake':
+          moves=genSnake(xx,yy,by,b); break;
       }
+
+      if(moves.some(m=>m.x===x && m.y===y)) return true;
     }
+  }
   return false;
 }
+
 
 function anyLegalMoves(color){
   for(let y=0;y<ROWS;y++)
