@@ -65,8 +65,9 @@ body {
 
 /* выбранная фигура */
 .highlight-selected {
-  background: rgba(0, 100, 0, 0.45);
+  background: rgba(0, 80, 255, 0.45);
 }
+
 
 /* обычный возможный ход */
 .highlight-move {
