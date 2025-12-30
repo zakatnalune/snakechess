@@ -144,17 +144,9 @@ function isKingInCheck(color,b){
   const k=findKing(color,b);
   if(!k) return false;
   const enemy=color==='w'?'b':'w';
-
-  for(let y=0;y<ROWS;y++)
-    for(let x=0;x<COLS;x++){
-      const p=b[y][x];
-      if(p&&p.color===enemy){
-        const m=generateMoves(x,y,b);
-        if(m.some(v=>v.x===k.x&&v.y===k.y)) return true;
-      }
-    }
-  return false;
+  return isSquareAttacked(k.x,k.y,enemy,b);
 }
+
 
 function isSquareAttacked(x,y,by,b){
   for(let yy=0;yy<ROWS;yy++){
