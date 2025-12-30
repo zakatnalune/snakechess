@@ -102,15 +102,26 @@ function movePiece(sx,sy,tx,ty){
   board[ty][tx]={...piece,moved:true};
   board[sy][sx]=null;
 
+  // ===== CASTLING =====
+  if(piece.type==='king' && Math.abs(tx-sx)===2){
+    // короткая
+    if(tx>sx){
+      board[ty][tx-1]={...board[ty][COLS-1],moved:true};
+      board[ty][COLS-1]=null;
+    }
+    // длинная
+    else{
+      board[ty][tx+1]={...board[ty][0],moved:true};
+      board[ty][0]=null;
+    }
+  }
+
   const p=board[ty][tx];
 
   // Pawn promotion
   if(p.type==='pawn'){
     if((p.color==='w'&&ty===0)||(p.color==='b'&&ty===ROWS-1)){
-      const choice=prompt(
-        'queen, rook, bishop, knight, snake',
-        'queen'
-      );
+      const choice=prompt('queen, rook, bishop, knight, snake','queen');
       const ok=['queen','rook','bishop','knight','snake'];
       p.type=ok.includes(choice)?choice:'queen';
     }
@@ -140,6 +151,18 @@ function isKingInCheck(color,b){
       if(p&&p.color===enemy){
         const m=generateMoves(x,y,b);
         if(m.some(v=>v.x===k.x&&v.y===k.y)) return true;
+      }
+    }
+  return false;
+}
+
+function isSquareAttacked(x,y,by,b){
+  for(let yy=0;yy<ROWS;yy++)
+    for(let xx=0;xx<COLS;xx++){
+      const p=b[yy][xx];
+      if(p && p.color===by){
+        const m=generateMoves(xx,yy,b);
+        if(m.some(v=>v.x===x&&v.y===y)) return true;
       }
     }
   return false;
@@ -212,9 +235,38 @@ const genRook=(x,y,c,b)=>ray(x,y,[[1,0],[-1,0],[0,1],[0,-1]],c,b);
 const genBishop=(x,y,c,b)=>ray(x,y,[[1,1],[1,-1],[-1,1],[-1,-1]],c,b);
 
 function genKing(x,y,c,b){
-  return [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+  const r=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
     .map(v=>({x:x+v[0],y:y+v[1]}))
     .filter(m=>inside(m.x,m.y)&&!isAlly(b[m.y][m.x],c));
+
+  const king=b[y][x];
+  if(king.moved) return r;
+
+  if(isKingInCheck(c,b)) return r;
+
+  const enemy=c==='w'?'b':'w';
+
+  // длинная
+  const left=b[y][0];
+  if(left&&left.type==='rook'&&!left.moved){
+    let ok=true;
+    for(let i=1;i<x;i++){
+      if(b[y][i]||isSquareAttacked(i,y,enemy,b)) ok=false;
+    }
+    if(ok) r.push({x:x-2,y});
+  }
+
+  // короткая
+  const right=b[y][COLS-1];
+  if(right&&right.type==='rook'&&!right.moved){
+    let ok=true;
+    for(let i=x+1;i<COLS-1;i++){
+      if(b[y][i]||isSquareAttacked(i,y,enemy,b)) ok=false;
+    }
+    if(ok) r.push({x:x+2,y});
+  }
+
+  return r;
 }
 
 function genKnight(x,y,c,b){
