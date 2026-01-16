@@ -673,25 +673,36 @@ function updateGameInfo() {
   const opponentInfo = document.getElementById('opponent-info');
   const gameStatus = document.getElementById('game-status');
 
-  turnDisplay.textContent = turn === 'w' ? 'Белых' : 'Черных';
+  // Don't update turn display if element doesn't exist
+  if (turnDisplay) {
+    turnDisplay.textContent = turn === 'w' ? 'Белых' : 'Черных';
+  }
 
-  if (gameMode === 'bot') {
-    document.getElementById('opponent-name').textContent = 'Бот (Fairy Stockfish)';
+  if (gameMode === 'bot' && opponentInfo) {
+    const opponentName = document.getElementById('opponent-name');
+    if (opponentName) {
+      opponentName.textContent = 'Бот (Fairy Stockfish)';
+    }
     opponentInfo.style.display = 'block';
-  } else if (gameMode === 'online' && currentGame) {
+  } else if (gameMode === 'online' && currentGame && opponentInfo) {
     const opponent = currentGame.white._id === currentUser.id ? currentGame.black : currentGame.white;
     if (opponent) {
-      document.getElementById('opponent-name').textContent = opponent.username;
+      const opponentName = document.getElementById('opponent-name');
+      if (opponentName) {
+        opponentName.textContent = opponent.username;
+      }
       opponentInfo.style.display = 'block';
     }
-  } else {
+  } else if (opponentInfo) {
     opponentInfo.style.display = 'none';
   }
 
-  if (gameOver) {
-    gameStatus.textContent = 'Игра окончена';
-  } else {
-    gameStatus.textContent = '';
+  if (gameStatus) {
+    if (gameOver) {
+      gameStatus.textContent = 'Игра окончена';
+    } else {
+      gameStatus.textContent = '';
+    }
   }
 }
 
