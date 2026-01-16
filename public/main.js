@@ -534,17 +534,20 @@ function showAuthModal(mode) {
   const title = document.getElementById('auth-modal-title');
   const registerFields = document.getElementById('register-fields');
   const registerEmail = document.getElementById('register-email');
+  const loginFields = document.getElementById('login-fields');
   const submitBtn = document.getElementById('auth-submit-btn');
 
   if (mode === 'register') {
     title.textContent = 'Регистрация';
     registerFields.style.display = 'block';
     registerEmail.style.display = 'block';
+    loginFields.style.display = 'none';
     submitBtn.textContent = 'Зарегистрироваться';
   } else {
     title.textContent = 'Вход';
     registerFields.style.display = 'none';
     registerEmail.style.display = 'none';
+    loginFields.style.display = 'block';
     submitBtn.textContent = 'Войти';
   }
 
@@ -561,6 +564,7 @@ function toggleAuthMode(e) {
   e.preventDefault();
   const registerFields = document.getElementById('register-fields');
   const registerEmail = document.getElementById('register-email');
+  const loginFields = document.getElementById('login-fields');
   const title = document.getElementById('auth-modal-title');
   const submitBtn = document.getElementById('auth-submit-btn');
   const toggleText = document.getElementById('auth-toggle-text');
@@ -570,6 +574,7 @@ function toggleAuthMode(e) {
     title.textContent = 'Регистрация';
     registerFields.style.display = 'block';
     registerEmail.style.display = 'block';
+    loginFields.style.display = 'none';
     submitBtn.textContent = 'Зарегистрироваться';
     toggleText.textContent = 'Уже есть аккаунт? ';
     toggleLink.textContent = 'Войти';
@@ -577,6 +582,7 @@ function toggleAuthMode(e) {
     title.textContent = 'Вход';
     registerFields.style.display = 'none';
     registerEmail.style.display = 'none';
+    loginFields.style.display = 'block';
     submitBtn.textContent = 'Войти';
     toggleText.textContent = 'Нет аккаунта? ';
     toggleLink.textContent = 'Зарегистрироваться';
