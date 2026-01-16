@@ -22,6 +22,10 @@ let selected = null;
 let turn = 'w';
 let gameOver = false;
 
+// Game state for advanced rules
+let positionHistory = new Map(); // For threefold repetition
+let lastPawnDoubleMove = null; // {x, y, color} - for en passant
+
 // ================== APP STATE ==================
 let currentUser = null;
 let currentGame = null;
@@ -101,8 +105,10 @@ function clickCell(x,y){
 
   if(selected){
     const moves=getLegalMoves(selected.x,selected.y);
-    if(moves.some(m=>m.x===x&&m.y===y)){
-      movePiece(selected.x,selected.y,x,y);
+    const targetMove = moves.find(m=>m.x===x&&m.y===y);
+    if(targetMove){
+      const isEnPassant = targetMove.enPassant || false;
+      movePiece(selected.x,selected.y,x,y, isEnPassant);
       selected=null;
       render();
       checkGameEnd();
@@ -216,10 +222,23 @@ function makeRandomMove(){
 }
 
 // ================== MOVE ==================
-function movePiece(sx,sy,tx,ty){
+function movePiece(sx,sy,tx,ty,enPassant = false){
   const piece=board[sy][sx];
   board[ty][tx]={...piece,moved:true};
   board[sy][sx]=null;
+
+  // ===== EN PASSANT CAPTURE =====
+  if(enPassant && piece.type === 'pawn'){
+    // Remove the captured pawn (it's on the same rank as the target square)
+    board[sy][tx] = null;
+  }
+
+  // ===== TRACK PAWN DOUBLE MOVES =====
+  if(piece.type === 'pawn' && Math.abs(ty - sy) === 2){
+    lastPawnDoubleMove = {x: tx, y: ty, color: piece.color};
+  } else {
+    lastPawnDoubleMove = null;
+  }
 
   // ===== CASTLING =====
   if(piece.type==='king' && Math.abs(tx-sx)===2){
@@ -341,6 +360,23 @@ function anyLegalMoves(color){
 }
 
 function checkGameEnd(){
+  // Check for threefold repetition
+  const currentFen = boardToFen().split(' ')[0]; // Only position, ignore turn/castling/etc
+  const count = (positionHistory.get(currentFen) || 0) + 1;
+  positionHistory.set(currentFen, count);
+
+  if(count >= 3){
+    gameOver=true;
+    alert('Ничья по троекратному повторению позиции!');
+    const winner = 'draw';
+
+    // Save game result if authenticated and playing rated game
+    if (currentUser && (gameMode === 'online' || gameMode === 'bot') && currentGame) {
+      saveGameResult(winner);
+    }
+    return;
+  }
+
   const inCheck=isKingInCheck(turn,board);
   if(!anyLegalMoves(turn)){
     gameOver=true;
@@ -475,17 +511,34 @@ function genKnight(x,y,c,b){
 function genPawn(x,y,c,b){
   const dir=c==='w'?-1:1;
   const r=[];
+
+  // Normal move forward
   if(inside(x,y+dir)&&!b[y+dir][x]) r.push({x,y:y+dir});
 
+  // Double move from starting position
   const start=(c==='w'?6:1);
   if(y===start && !b[y+dir][x] && !b[y+2*dir][x])
     r.push({x,y:y+2*dir});
 
+  // Normal captures
   for(const dx of [-1,1]){
     const nx=x+dx,ny=y+dir;
     if(inside(nx,ny)&&b[ny][nx]&&b[ny][nx].color!==c)
       r.push({x:nx,y:ny});
   }
+
+  // En passant (битье на проходе)
+  if(lastPawnDoubleMove && lastPawnDoubleMove.color !== c){
+    // Check if the last double pawn move is adjacent to current pawn
+    if(Math.abs(lastPawnDoubleMove.x - x) === 1 && lastPawnDoubleMove.y === y){
+      // The en passant capture square
+      const enPassantY = c === 'w' ? lastPawnDoubleMove.y - 1 : lastPawnDoubleMove.y + 1;
+      if(inside(lastPawnDoubleMove.x, enPassantY)){
+        r.push({x: lastPawnDoubleMove.x, y: enPassantY, enPassant: true});
+      }
+    }
+  }
+
   return r;
 }
 
@@ -1217,6 +1270,8 @@ function resetGame() {
   selected = null;
   turn = 'w';
   gameOver = false;
+  positionHistory.clear();
+  lastPawnDoubleMove = null;
   render();
   updateGameInfo();
 }
