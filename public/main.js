@@ -514,15 +514,9 @@ function startLocalGame() {
 }
 
 function startBotGame() {
-  if (!currentUser) {
-    showAuthModal('login');
-    return;
-  }
-
   gameMode = 'bot';
   resetGame();
   updateGameInfo();
-  // TODO: Initialize Fairy Stockfish
   initFairyStockfish();
 }
 
