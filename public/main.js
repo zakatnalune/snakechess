@@ -123,14 +123,75 @@ function makeBotMove(){
   if(gameMode !== 'bot' || gameOver || turn !== 'b') return;
 
   if (fairyStockfish) {
-    // Try to get move from Fairy Stockfish
+    // Use enhanced Stockfish with snake logic
     const fen = boardToFen();
     fairyStockfish.postMessage({ type: 'set_position', data: { fen } });
     fairyStockfish.postMessage({ type: 'get_best_move', data: { time: 1000 } });
   } else {
-    // Fallback to random move
-    makeRandomMove();
+    // Fallback to intelligent snake-aware move selection
+    makeIntelligentMove();
   }
+}
+
+function makeIntelligentMove(){
+  const allMoves = [];
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(board[y][x] && board[y][x].color === 'b'){
+        const moves = getLegalMoves(x,y);
+        moves.forEach(m => {
+          allMoves.push({
+            from:{x,y},
+            to:m,
+            score: evaluateMoveForBot({from:{x,y}, to:m})
+          });
+        });
+      }
+    }
+  }
+
+  if(allMoves.length > 0){
+    // Sort by score and pick the best move
+    allMoves.sort((a, b) => b.score - a.score);
+    const bestMove = allMoves[0];
+
+    movePiece(bestMove.from.x, bestMove.from.y, bestMove.to.x, bestMove.to.y);
+    render();
+    checkGameEnd();
+  }
+}
+
+function evaluateMoveForBot(move) {
+  let score = 0;
+
+  // Material gain
+  const capturedPiece = board[move.to.y][move.to.x];
+  if (capturedPiece) {
+    const pieceValues = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 100, snake: 4 };
+    score += pieceValues[capturedPiece.type] * 10;
+  }
+
+  // Snake-specific evaluation
+  const movingPiece = board[move.from.y][move.from.x];
+  if (movingPiece.type === 'snake') {
+    // Snakes are powerful - prefer moves that increase their mobility
+    score += 8; // Base snake value
+
+    // Prefer central positions
+    const centerDistance = Math.abs(move.to.x - 5) + Math.abs(move.to.y - 4);
+    score += Math.max(0, 6 - centerDistance);
+
+    // Bonus for attacking enemy pieces
+    if (capturedPiece) {
+      score += 5; // Snakes are great at capturing
+    }
+  }
+
+  // Position bonuses
+  if (move.to.y >= 2 && move.to.y <= 5) score += 2;
+  if (move.to.x >= 3 && move.to.x <= 6) score += 1;
+
+  return score + Math.random() * 3; // Add small randomness
 }
 
 function makeRandomMove(){
