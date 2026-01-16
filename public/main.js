@@ -22,6 +22,13 @@ let selected = null;
 let turn = 'w';
 let gameOver = false;
 
+// ================== APP STATE ==================
+let currentUser = null;
+let currentGame = null;
+let gameMode = 'local'; // 'local', 'bot', 'online'
+let ws = null;
+let fairyStockfish = null;
+
 // ================== HELPERS ==================
 function inside(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS; }
 function isAlly(p,c){ return p && p.color===c; }
@@ -77,6 +84,21 @@ function render(){
 function clickCell(x,y){
   if(gameOver) return;
 
+  // In online mode, only allow moves on your turn
+  if(gameMode === 'online' && currentGame){
+    const isWhitePlayer = currentGame.white._id === currentUser?.id;
+    const isBlackPlayer = currentGame.black && currentGame.black._id === currentUser?.id;
+
+    if((turn === 'w' && !isWhitePlayer) || (turn === 'b' && !isBlackPlayer)){
+      return; // Not your turn
+    }
+  }
+
+  // In bot mode, don't allow black moves
+  if(gameMode === 'bot' && turn === 'b'){
+    return;
+  }
+
   if(selected){
     const moves=getLegalMoves(selected.x,selected.y);
     if(moves.some(m=>m.x===x&&m.y===y)){
@@ -94,6 +116,32 @@ function clickCell(x,y){
     selected=null;
   }
   render();
+}
+
+// ================== BOT MOVE ==================
+function makeBotMove(){
+  if(gameMode !== 'bot' || gameOver || turn !== 'b') return;
+
+  // TODO: Get move from Fairy Stockfish
+  // For now, make a random legal move
+  const allMoves = [];
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(board[y][x] && board[y][x].color === 'b'){
+        const moves = getLegalMoves(x,y);
+        moves.forEach(m => {
+          allMoves.push({from:{x,y}, to:m});
+        });
+      }
+    }
+  }
+
+  if(allMoves.length > 0){
+    const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    movePiece(randomMove.from.x, randomMove.from.y, randomMove.to.x, randomMove.to.y);
+    render();
+    checkGameEnd();
+  }
 }
 
 // ================== MOVE ==================
@@ -128,6 +176,27 @@ function movePiece(sx,sy,tx,ty){
   }
 
   turn = turn==='w'?'b':'w';
+
+  // Send move to server if playing online
+  if (gameMode === 'online' && currentGame && ws && ws.readyState === WebSocket.OPEN) {
+    const moveData = {
+      from: { x: sx, y: sy },
+      to: { x: tx, y: ty },
+      piece: piece.type,
+      color: piece.color
+    };
+
+    ws.send(JSON.stringify({
+      type: 'make-move',
+      gameId: currentGame._id,
+      move: moveData
+    }));
+  }
+
+  // Handle bot moves
+  if (gameMode === 'bot' && turn === 'b' && !gameOver) {
+    setTimeout(makeBotMove, 500); // Delay for better UX
+  }
 }
 
 // ================== CHECK / MATE / STALEMATE ==================
@@ -204,7 +273,43 @@ function checkGameEnd(){
   const inCheck=isKingInCheck(turn,board);
   if(!anyLegalMoves(turn)){
     gameOver=true;
+    const result = inCheck ? 'checkmate' : 'stalemate';
+    const winner = result === 'checkmate' ? (turn === 'w' ? 'black' : 'white') : 'draw';
+
     alert(inCheck?'Мат':'Пат');
+
+    // Save game result if authenticated and playing rated game
+    if (currentUser && (gameMode === 'online' || gameMode === 'bot') && currentGame) {
+      saveGameResult(winner);
+    }
+  }
+}
+
+async function saveGameResult(winner) {
+  try {
+    const response = await fetch(`/api/games/${currentGame._id}/end`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ winner }),
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Game saved:', data);
+      // Update user rating display
+      if (currentUser) {
+        currentUser.rating = data.game.white._id === currentUser.id ?
+          data.game.white.rating : data.game.black.rating;
+        updateUserDisplay();
+      }
+    } else {
+      console.error('Failed to save game result');
+    }
+  } catch (error) {
+    console.error('Error saving game result:', error);
   }
 }
 
@@ -357,6 +462,593 @@ function highlight(){
   });
 }
 
+// ================== UI MANAGEMENT ==================
+function initUI() {
+  // Navigation buttons
+  document.getElementById('play-local').addEventListener('click', () => startLocalGame());
+  document.getElementById('play-bot').addEventListener('click', () => startBotGame());
+  document.getElementById('play-online').addEventListener('click', () => showOnlineGame());
+  document.getElementById('lobby').addEventListener('click', () => showLobby());
+  document.getElementById('leaderboard').addEventListener('click', () => showLeaderboard());
+  document.getElementById('game-history').addEventListener('click', () => showGameHistory());
+
+  // Auth buttons
+  document.getElementById('login-btn').addEventListener('click', () => showAuthModal('login'));
+  document.getElementById('register-btn').addEventListener('click', () => showAuthModal('register'));
+  document.getElementById('logout-btn').addEventListener('click', () => logout());
+
+  // Modal controls
+  document.querySelectorAll('.modal-close').forEach(close => {
+    close.addEventListener('click', () => hideModals());
+  });
+
+  // Auth form
+  document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+  document.getElementById('auth-toggle-link').addEventListener('click', toggleAuthMode);
+
+  // Lobby controls
+  document.getElementById('create-room-btn').addEventListener('click', createGameRoom);
+  document.getElementById('refresh-lobby-btn').addEventListener('click', loadWaitingGames);
+
+  // Check if user is logged in
+  checkAuthStatus();
+
+  // Initialize WebSocket
+  initWebSocket();
+}
+
+function startLocalGame() {
+  gameMode = 'local';
+  resetGame();
+  updateGameInfo();
+}
+
+function startBotGame() {
+  if (!currentUser) {
+    showAuthModal('login');
+    return;
+  }
+
+  gameMode = 'bot';
+  resetGame();
+  updateGameInfo();
+  // TODO: Initialize Fairy Stockfish
+  initFairyStockfish();
+}
+
+function showOnlineGame() {
+  if (!currentUser) {
+    showAuthModal('login');
+    return;
+  }
+
+  showLobby();
+}
+
+function showAuthModal(mode) {
+  const modal = document.getElementById('auth-modal');
+  const title = document.getElementById('auth-modal-title');
+  const registerFields = document.getElementById('register-fields');
+  const registerEmail = document.getElementById('register-email');
+  const submitBtn = document.getElementById('auth-submit-btn');
+
+  if (mode === 'register') {
+    title.textContent = 'Регистрация';
+    registerFields.style.display = 'block';
+    registerEmail.style.display = 'block';
+    submitBtn.textContent = 'Зарегистрироваться';
+  } else {
+    title.textContent = 'Вход';
+    registerFields.style.display = 'none';
+    registerEmail.style.display = 'none';
+    submitBtn.textContent = 'Войти';
+  }
+
+  modal.style.display = 'flex';
+}
+
+function hideModals() {
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.style.display = 'none';
+  });
+}
+
+function toggleAuthMode(e) {
+  e.preventDefault();
+  const registerFields = document.getElementById('register-fields');
+  const registerEmail = document.getElementById('register-email');
+  const title = document.getElementById('auth-modal-title');
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const toggleText = document.getElementById('auth-toggle-text');
+  const toggleLink = document.getElementById('auth-toggle-link');
+
+  if (registerFields.style.display === 'none') {
+    title.textContent = 'Регистрация';
+    registerFields.style.display = 'block';
+    registerEmail.style.display = 'block';
+    submitBtn.textContent = 'Зарегистрироваться';
+    toggleText.textContent = 'Уже есть аккаунт? ';
+    toggleLink.textContent = 'Войти';
+  } else {
+    title.textContent = 'Вход';
+    registerFields.style.display = 'none';
+    registerEmail.style.display = 'none';
+    submitBtn.textContent = 'Войти';
+    toggleText.textContent = 'Нет аккаунта? ';
+    toggleLink.textContent = 'Зарегистрироваться';
+  }
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+
+  const formData = new FormData(e.target);
+  const isRegister = document.getElementById('register-fields').style.display !== 'none';
+
+  try {
+    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+    const body = isRegister ? {
+      username: formData.get('username'),
+      email: formData.get('email'),
+      password: formData.get('password')
+    } : {
+      usernameOrEmail: formData.get('usernameOrEmail'),
+      password: formData.get('password')
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      currentUser = data.user;
+      updateUserDisplay();
+      hideModals();
+      e.target.reset();
+    } else {
+      alert(data.error || 'Ошибка аутентификации');
+    }
+  } catch (error) {
+    console.error('Auth error:', error);
+    alert('Ошибка сети');
+  }
+}
+
+async function checkAuthStatus() {
+  try {
+    const response = await fetch('/api/auth/me', {
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      currentUser = data.user;
+      updateUserDisplay();
+    }
+  } catch (error) {
+    console.error('Auth check error:', error);
+  }
+}
+
+function updateUserDisplay() {
+  const userInfo = document.getElementById('user-info');
+  const authButtons = document.getElementById('auth-buttons');
+
+  if (currentUser) {
+    document.getElementById('username-display').textContent = currentUser.username;
+    document.getElementById('rating-display').textContent = `Рейтинг: ${currentUser.rating}`;
+    userInfo.style.display = 'flex';
+    authButtons.style.display = 'none';
+  } else {
+    userInfo.style.display = 'none';
+    authButtons.style.display = 'flex';
+  }
+}
+
+async function logout() {
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    currentUser = null;
+    updateUserDisplay();
+    if (ws) {
+      ws.close();
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+}
+
+function updateGameInfo() {
+  const turnDisplay = document.getElementById('current-turn');
+  const opponentInfo = document.getElementById('opponent-info');
+  const gameStatus = document.getElementById('game-status');
+
+  turnDisplay.textContent = turn === 'w' ? 'Белых' : 'Черных';
+
+  if (gameMode === 'bot') {
+    document.getElementById('opponent-name').textContent = 'Бот (Fairy Stockfish)';
+    opponentInfo.style.display = 'block';
+  } else if (gameMode === 'online' && currentGame) {
+    const opponent = currentGame.white._id === currentUser.id ? currentGame.black : currentGame.white;
+    if (opponent) {
+      document.getElementById('opponent-name').textContent = opponent.username;
+      opponentInfo.style.display = 'block';
+    }
+  } else {
+    opponentInfo.style.display = 'none';
+  }
+
+  if (gameOver) {
+    gameStatus.textContent = 'Игра окончена';
+  } else {
+    gameStatus.textContent = '';
+  }
+}
+
+// ================== WEBSOCKET ==================
+function initWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    if (currentUser) {
+      // Send authentication
+      ws.send(JSON.stringify({
+        type: 'auth',
+        token: document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1]
+      }));
+    }
+  };
+
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    handleWebSocketMessage(message);
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket disconnected');
+    // Attempt to reconnect after delay
+    setTimeout(initWebSocket, 3000);
+  };
+
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function handleWebSocketMessage(message) {
+  console.log('Received WS message:', message.type);
+
+  switch (message.type) {
+    case 'auth':
+      if (message.success) {
+        console.log('WebSocket authenticated');
+      }
+      break;
+
+    case 'game-joined':
+      currentGame = message.game;
+      gameMode = 'online';
+      resetGame();
+      updateGameInfo();
+      break;
+
+    case 'move-made':
+      // Update board with opponent's move
+      if (message.move) {
+        // Apply move to local board
+        applyMoveToBoard(message.move);
+        turn = message.turn;
+        render();
+        updateGameInfo();
+      }
+      break;
+
+    case 'player-joined':
+      updateGameInfo();
+      break;
+
+    case 'player-left':
+      alert('Соперник покинул игру');
+      break;
+
+    case 'lobby-chat':
+      // Handle lobby chat messages
+      break;
+
+    case 'error':
+      alert(message.message);
+      break;
+  }
+}
+
+function applyMoveToBoard(move) {
+  // Convert move notation to board coordinates and apply
+  // This would need to be implemented based on how moves are stored
+  console.log('Applying move:', move);
+}
+
+// ================== LOBBY FUNCTIONS ==================
+function showLobby() {
+  const modal = document.getElementById('lobby-modal');
+  modal.style.display = 'flex';
+  loadWaitingGames();
+}
+
+async function loadWaitingGames() {
+  const waitingGamesDiv = document.getElementById('waiting-games');
+
+  try {
+    waitingGamesDiv.innerHTML = '<div class="loading">Загрузка...</div>';
+
+    const response = await fetch('/api/games/lobby/waiting', {
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      displayWaitingGames(data.games);
+    } else {
+      waitingGamesDiv.innerHTML = '<div class="error">Ошибка загрузки лобби</div>';
+    }
+  } catch (error) {
+    console.error('Load lobby error:', error);
+    waitingGamesDiv.innerHTML = '<div class="error">Ошибка сети</div>';
+  }
+}
+
+function displayWaitingGames(games) {
+  const waitingGamesDiv = document.getElementById('waiting-games');
+
+  if (games.length === 0) {
+    waitingGamesDiv.innerHTML = '<div class="no-games">Нет доступных игр. Создайте новую!</div>';
+    return;
+  }
+
+  let html = '<div class="games-list">';
+  games.forEach(game => {
+    html += `
+      <div class="game-item">
+        <div class="game-info">
+          <div class="host">${game.white.username} (рейтинг: ${game.white.rating})</div>
+          <div class="game-type">Человек vs Человек</div>
+        </div>
+        <button class="join-btn" onclick="joinGame('${game._id}')">Присоединиться</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  waitingGamesDiv.innerHTML = html;
+}
+
+async function createGameRoom() {
+  try {
+    const response = await fetch('/api/games', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        gameType: 'human-vs-human',
+        timeControl: { initial: 600, increment: 0 }
+      }),
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      currentGame = data.game;
+      hideModals();
+      alert(`Комната создана! Код комнаты: ${data.game.roomId}`);
+      // Wait for opponent to join
+    } else {
+      const error = await response.json();
+      alert(error.error || 'Ошибка создания комнаты');
+    }
+  } catch (error) {
+    console.error('Create room error:', error);
+    alert('Ошибка сети');
+  }
+}
+
+async function joinGame(gameId) {
+  try {
+    const response = await fetch(`/api/games/${gameId}/join`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      currentGame = data.game;
+
+      // Join WebSocket room
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'join-game',
+          gameId: gameId
+        }));
+      }
+
+      hideModals();
+      gameMode = 'online';
+      resetGame();
+      updateGameInfo();
+    } else {
+      const error = await response.json();
+      alert(error.error || 'Ошибка присоединения к игре');
+    }
+  } catch (error) {
+    console.error('Join game error:', error);
+    alert('Ошибка сети');
+  }
+}
+
+// Make joinGame available globally for onclick handlers
+window.joinGame = joinGame;
+
+// ================== LEADERBOARD FUNCTIONS ==================
+function showLeaderboard() {
+  const modal = document.getElementById('leaderboard-modal');
+  modal.style.display = 'flex';
+  loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+  const leaderboardDiv = document.getElementById('leaderboard-list');
+
+  try {
+    leaderboardDiv.innerHTML = '<div class="loading">Загрузка...</div>';
+
+    const response = await fetch('/api/games/leaderboard/top', {
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      displayLeaderboard(data.users);
+    } else {
+      leaderboardDiv.innerHTML = '<div class="error">Ошибка загрузки рейтинга</div>';
+    }
+  } catch (error) {
+    console.error('Load leaderboard error:', error);
+    leaderboardDiv.innerHTML = '<div class="error">Ошибка сети</div>';
+  }
+}
+
+function displayLeaderboard(users) {
+  const leaderboardDiv = document.getElementById('leaderboard-list');
+
+  let html = '<table class="leaderboard-table">';
+  html += `
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Игрок</th>
+        <th>Рейтинг</th>
+        <th>Игры</th>
+        <th>Победы</th>
+        <th>Поражения</th>
+      </tr>
+    </thead>
+  `;
+
+  html += '<tbody>';
+  users.forEach((user, index) => {
+    html += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${user.username}</td>
+        <td>${user.rating}</td>
+        <td>${user.gamesPlayed}</td>
+        <td>${user.wins}</td>
+        <td>${user.losses}</td>
+      </tr>
+    `;
+  });
+  html += '</tbody></table>';
+
+  leaderboardDiv.innerHTML = html;
+}
+
+// ================== GAME HISTORY FUNCTIONS ==================
+function showGameHistory() {
+  if (!currentUser) {
+    showAuthModal('login');
+    return;
+  }
+
+  const modal = document.getElementById('history-modal');
+  modal.style.display = 'flex';
+  loadGameHistory();
+}
+
+async function loadGameHistory() {
+  const historyDiv = document.getElementById('game-history-list');
+
+  try {
+    historyDiv.innerHTML = '<div class="loading">Загрузка...</div>';
+
+    const response = await fetch(`/api/games/user/${currentUser.id}`, {
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      displayGameHistory(data.games);
+    } else {
+      historyDiv.innerHTML = '<div class="error">Ошибка загрузки истории</div>';
+    }
+  } catch (error) {
+    console.error('Load history error:', error);
+    historyDiv.innerHTML = '<div class="error">Ошибка сети</div>';
+  }
+}
+
+function displayGameHistory(games) {
+  const historyDiv = document.getElementById('game-history-list');
+
+  if (games.length === 0) {
+    historyDiv.innerHTML = '<div class="no-games">У вас пока нет завершенных игр</div>';
+    return;
+  }
+
+  let html = '<div class="games-history-list">';
+  games.forEach(game => {
+    const opponent = game.white._id === currentUser.id ? game.black : game.white;
+    const result = game.winner === 'draw' ? 'Ничья' :
+                  (game.winner === (game.white._id === currentUser.id ? 'white' : 'black') ? 'Победа' : 'Поражение');
+
+    html += `
+      <div class="history-item">
+        <div class="history-info">
+          <div class="opponent">${opponent ? opponent.username : 'Бот'}</div>
+          <div class="result ${result.toLowerCase()}">${result}</div>
+          <div class="date">${new Date(game.finishedAt).toLocaleDateString()}</div>
+        </div>
+        <div class="game-details">
+          <div class="moves-count">${game.moves.length} ходов</div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  historyDiv.innerHTML = html;
+}
+
+// ================== FAIRY STOCKFISH INTEGRATION ==================
+function initFairyStockfish() {
+  // TODO: Initialize Fairy Stockfish engine
+  // This would require loading the Fairy Stockfish WASM and setting up communication
+  console.log('Initializing Fairy Stockfish...');
+  // fairyStockfish = new FairyStockfish();
+}
+
+function resetGame() {
+  setup();
+  selected = null;
+  turn = 'w';
+  gameOver = false;
+  render();
+  updateGameInfo();
+}
+
 // ================== START ==================
 setup();
 render();
+initUI();

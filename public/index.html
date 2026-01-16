@@ -4,12 +4,159 @@
   <meta charset="UTF-8">
   <title>SnakeChess</title>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
 <div class="page">
+  <!-- Navigation Menu -->
+  <nav class="top-menu">
+    <div class="nav-brand">
+      <h1><i class="fas fa-chess"></i> SnakeChess</h1>
+    </div>
+
+    <div class="nav-buttons">
+      <button id="play-local" class="nav-btn">
+        <i class="fas fa-user"></i> Играть локально
+      </button>
+      <button id="play-bot" class="nav-btn">
+        <i class="fas fa-robot"></i> Против бота
+      </button>
+      <button id="play-online" class="nav-btn">
+        <i class="fas fa-users"></i> Онлайн игра
+      </button>
+      <button id="lobby" class="nav-btn">
+        <i class="fas fa-list"></i> Лобби
+      </button>
+      <button id="leaderboard" class="nav-btn">
+        <i class="fas fa-trophy"></i> Рейтинг
+      </button>
+      <button id="game-history" class="nav-btn">
+        <i class="fas fa-history"></i> История игр
+      </button>
+    </div>
+
+    <div class="user-section">
+      <div id="user-info" class="user-info" style="display: none;">
+        <span id="username-display"></span>
+        <span id="rating-display"></span>
+        <button id="logout-btn" class="logout-btn">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+      <div id="auth-buttons" class="auth-buttons">
+        <button id="login-btn" class="auth-btn">
+          <i class="fas fa-sign-in-alt"></i> Войти
+        </button>
+        <button id="register-btn" class="auth-btn">
+          <i class="fas fa-user-plus"></i> Регистрация
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <!-- Game Board Container -->
+    <div class="game-section">
   <div class="game-wrapper">
     <div id="board" class="board"></div>
+        <div id="game-info" class="game-info">
+          <div class="turn-indicator">
+            Ход: <span id="current-turn">Белых</span>
+          </div>
+          <div id="opponent-info" class="opponent-info" style="display: none;">
+            Соперник: <span id="opponent-name"></span>
+          </div>
+          <div id="game-status" class="game-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals/Dialogs -->
+    <div id="auth-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="auth-modal-title">Вход</h2>
+          <span class="modal-close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="auth-form">
+            <div id="register-fields" style="display: none;">
+              <div class="form-group">
+                <label for="username">Имя пользователя:</label>
+                <input type="text" id="username" name="username" required minlength="3" maxlength="20">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="usernameOrEmail">Имя пользователя или Email:</label>
+              <input type="text" id="usernameOrEmail" name="usernameOrEmail" required>
+            </div>
+            <div id="register-email" style="display: none;">
+              <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="password">Пароль:</label>
+              <input type="password" id="password" name="password" required minlength="6">
+            </div>
+            <button type="submit" id="auth-submit-btn">Войти</button>
+          </form>
+          <div class="auth-toggle">
+            <span id="auth-toggle-text">Нет аккаунта? </span>
+            <a href="#" id="auth-toggle-link">Зарегистрироваться</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="lobby-modal" class="modal" style="display: none;">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h2>Лобби</h2>
+          <span class="modal-close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="lobby-controls">
+            <button id="create-room-btn" class="primary-btn">Создать комнату</button>
+            <button id="refresh-lobby-btn">Обновить</button>
+          </div>
+          <div id="waiting-games" class="waiting-games">
+            <div class="loading">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="leaderboard-modal" class="modal" style="display: none;">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h2>Рейтинг игроков</h2>
+          <span class="modal-close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="leaderboard-list" class="leaderboard-list">
+            <div class="loading">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="history-modal" class="modal" style="display: none;">
+      <div class="modal-content large">
+        <div class="modal-header">
+          <h2>История игр</h2>
+          <span class="modal-close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="game-history-list" class="game-history-list">
+            <div class="loading">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

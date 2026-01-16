@@ -128,3 +128,502 @@ body {
 .promotion img:hover {
   background: #444;
 }
+
+/* ================== NAVIGATION ================== */
+.top-menu {
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-brand h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.nav-brand i {
+  margin-right: 8px;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-btn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+
+.nav-btn:active {
+  transform: translateY(0);
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+#rating-display {
+  background: rgba(255,215,0,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.logout-btn {
+  background: rgba(231,76,60,0.8);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(231,76,60,1);
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.auth-btn {
+  background: #3498db;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-btn:hover {
+  background: #2980b9;
+}
+
+/* ================== MAIN CONTENT ================== */
+.main-content {
+  min-height: calc(100vh - 70px);
+  padding: 20px;
+}
+
+.game-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.game-info {
+  margin-left: 24px;
+  background: rgba(255,255,255,0.9);
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  min-width: 200px;
+}
+
+.turn-indicator {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.opponent-info {
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+/* ================== MODALS ================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content.large {
+  max-width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.modal-close {
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.3s ease;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+/* ================== FORMS ================== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+}
+
+#auth-submit-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+  transition: background 0.3s ease;
+}
+
+#auth-submit-btn:hover {
+  background: #2980b9;
+}
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.auth-toggle a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.auth-toggle a:hover {
+  text-decoration: underline;
+}
+
+/* ================== LOBBY ================== */
+.lobby-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.primary-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.primary-btn:hover {
+  background: #229954;
+}
+
+.waiting-games {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.waiting-games .loading {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* ================== LEADERBOARD ================== */
+.leaderboard-list .loading {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* ================== GAME HISTORY ================== */
+.game-history-list .loading {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+/* ================== GAMES LIST ================== */
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.game-info {
+  flex: 1;
+}
+
+.game-info .host {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.game-info .game-type {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.join-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.join-btn:hover {
+  background: #218838;
+}
+
+/* ================== LEADERBOARD ================== */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.leaderboard-table th {
+  background: #f8f9fa;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.leaderboard-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+/* ================== GAME HISTORY ================== */
+.games-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.history-info {
+  flex: 1;
+}
+
+.history-info .opponent {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.history-info .result {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.history-info .result.победа {
+  color: #28a745;
+}
+
+.history-info .result.поражение {
+  color: #dc3545;
+}
+
+.history-info .result.ничья {
+  color: #ffc107;
+}
+
+.history-info .date {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.game-details {
+  text-align: right;
+}
+
+.moves-count {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* ================== NO DATA STATES ================== */
+.no-games {
+  text-align: center;
+  color: #6c757d;
+  padding: 40px;
+  font-style: italic;
+}
+
+.error {
+  text-align: center;
+  color: #dc3545;
+  padding: 40px;
+}
+
+/* ================== RESPONSIVE ================== */
+@media (max-width: 768px) {
+  .top-menu {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nav-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .nav-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .game-wrapper {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .game-info {
+    margin-left: 0;
+    margin-top: 16px;
+  }
+
+  .game-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .join-btn {
+    width: 100%;
+  }
+
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .game-details {
+    text-align: left;
+  }
+
+  .leaderboard-table {
+    font-size: 14px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 8px 6px;
+  }
+}
