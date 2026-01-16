@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  snakechess-server:
+    build: ./server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/snakechess
+      - JWT_SECRET=your-development-secret-key
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=snakechess
+
+volumes:
+  mongodb_data:

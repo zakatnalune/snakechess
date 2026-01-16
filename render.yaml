@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: snakechess-server
+    runtime: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromSecret: mongodb_uri
+      - key: JWT_SECRET
+        fromSecret: jwt_secret
+      - key: CLIENT_URL
+        value: https://snakechess-1.onrender.com
