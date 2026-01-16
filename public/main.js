@@ -128,12 +128,16 @@ function clickCell(x,y){
 function makeBotMove(){
   if(gameMode !== 'bot' || gameOver || turn !== 'b') return;
 
+  console.log('Bot move requested, fairyStockfish:', !!fairyStockfish);
+
   if (fairyStockfish) {
     // Use enhanced Stockfish with snake logic
     const fen = boardToFen();
+    console.log('Sending FEN to Stockfish:', fen);
     fairyStockfish.postMessage({ type: 'set_position', data: { fen } });
     fairyStockfish.postMessage({ type: 'get_best_move', data: { time: 1000 } });
   } else {
+    console.log('Using fallback intelligent move');
     // Fallback to intelligent snake-aware move selection
     makeIntelligentMove();
   }
@@ -1177,19 +1181,24 @@ function initFairyStockfish() {
 
     fairyStockfish.onmessage = function(e) {
       const { type, move } = e.data;
+      console.log('Received message from Stockfish worker:', type, move);
 
       if (type === 'best_move' && move) {
+        console.log('Processing Stockfish move:', move);
         // Convert move from UCI format to coordinates
         const fromX = move.charCodeAt(0) - 'a'.charCodeAt(0);
         const fromY = ROWS - parseInt(move[1]); // UCI uses 1-8 from bottom, convert to 0-7 from top
         const toX = move.charCodeAt(2) - 'a'.charCodeAt(0);
         const toY = ROWS - parseInt(move[3]);
 
+        console.log('Converted coordinates:', {fromX, fromY, toX, toY});
+
         // Make the move
         movePiece(fromX, fromY, toX, toY);
         render();
         checkGameEnd();
       } else if (type === 'best_move' && !move) {
+        console.log('Stockfish returned no move, using fallback');
         // Fallback to random move if stockfish fails
         makeRandomMove();
       }
