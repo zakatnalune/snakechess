@@ -122,8 +122,18 @@ function clickCell(x,y){
 function makeBotMove(){
   if(gameMode !== 'bot' || gameOver || turn !== 'b') return;
 
-  // TODO: Get move from Fairy Stockfish
-  // For now, make a random legal move
+  if (fairyStockfish) {
+    // Try to get move from Fairy Stockfish
+    const fen = boardToFen();
+    fairyStockfish.postMessage({ type: 'set_position', data: { fen } });
+    fairyStockfish.postMessage({ type: 'get_best_move', data: { time: 1000 } });
+  } else {
+    // Fallback to random move
+    makeRandomMove();
+  }
+}
+
+function makeRandomMove(){
   const allMoves = [];
   for(let y=0;y<ROWS;y++){
     for(let x=0;x<COLS;x++){
@@ -1044,10 +1054,101 @@ function displayGameHistory(games) {
 
 // ================== FAIRY STOCKFISH INTEGRATION ==================
 function initFairyStockfish() {
-  // TODO: Initialize Fairy Stockfish engine
-  // This would require loading the Fairy Stockfish WASM and setting up communication
-  console.log('Initializing Fairy Stockfish...');
-  // fairyStockfish = new FairyStockfish();
+  if (fairyStockfish) {
+    fairyStockfish.postMessage({ type: 'quit' });
+  }
+
+  try {
+    fairyStockfish = new Worker('stockfish.worker.js');
+
+    fairyStockfish.onmessage = function(e) {
+      const { type, move } = e.data;
+
+      if (type === 'best_move' && move) {
+        // Convert move from UCI format to coordinates
+        const fromX = move.charCodeAt(0) - 'a'.charCodeAt(0);
+        const fromY = ROWS - parseInt(move[1]); // UCI uses 1-8 from bottom, convert to 0-7 from top
+        const toX = move.charCodeAt(2) - 'a'.charCodeAt(0);
+        const toY = ROWS - parseInt(move[3]);
+
+        // Make the move
+        movePiece(fromX, fromY, toX, toY);
+        render();
+        checkGameEnd();
+      } else if (type === 'best_move' && !move) {
+        // Fallback to random move if stockfish fails
+        makeRandomMove();
+      }
+    };
+
+    console.log('Fairy Stockfish worker initialized');
+  } catch (error) {
+    console.error('Failed to initialize Fairy Stockfish:', error);
+    fairyStockfish = null;
+  }
+}
+
+// ================== FEN CONVERSION ==================
+function pieceToFen(piece) {
+  if (!piece) return '';
+
+  const typeMap = {
+    'pawn': 'p',
+    'rook': 'r',
+    'knight': 'n',
+    'bishop': 'b',
+    'queen': 'q',
+    'king': 'k',
+    'snake': 's'  // Snake piece for fairy chess
+  };
+
+  const symbol = typeMap[piece.type];
+  return piece.color === 'w' ? symbol.toUpperCase() : symbol;
+}
+
+function boardToFen() {
+  let fen = '';
+
+  // Convert board to FEN position
+  for (let y = 0; y < ROWS; y++) {
+    let emptyCount = 0;
+
+    for (let x = 0; x < COLS; x++) {
+      const piece = board[y][x];
+
+      if (piece) {
+        if (emptyCount > 0) {
+          fen += emptyCount;
+          emptyCount = 0;
+        }
+        fen += pieceToFen(piece);
+      } else {
+        emptyCount++;
+      }
+    }
+
+    if (emptyCount > 0) {
+      fen += emptyCount;
+    }
+
+    if (y < ROWS - 1) {
+      fen += '/';
+    }
+  }
+
+  // Add turn
+  fen += ' ' + turn;
+
+  // Add castling rights (simplified - no castling for now)
+  fen += ' -';
+
+  // Add en passant target (not implemented)
+  fen += ' -';
+
+  // Add halfmove clock and fullmove number (simplified)
+  fen += ' 0 1';
+
+  return fen;
 }
 
 function resetGame() {
