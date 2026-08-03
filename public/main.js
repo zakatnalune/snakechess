@@ -5,15 +5,15 @@ const IMG = 'img/';
 
 const cellsImg = { w: 'wcell.jpg', b: 'bcell.jpg' };
 
-// bull временно использует картинки слона
+// bull временно использует картинки слона, bear — ладьи
 const piecesImg = {
-  w:{rook:'wrook.png',queen:'wqueen.png',king:'wking.png',pawn:'wpawn.png',snake:'wsnake.png',bull:'wbishop.png'},
-  b:{rook:'brook.png',queen:'bqueen.png',king:'bking.png',pawn:'bpawn.png',snake:'bsnake.png',bull:'bbishop.png'}
+  w:{queen:'wqueen.png',king:'wking.png',pawn:'wpawn.png',snake:'wsnake.png',bull:'wbishop.png',bear:'wrook.png'},
+  b:{queen:'bqueen.png',king:'bking.png',pawn:'bpawn.png',snake:'bsnake.png',bull:'bbishop.png',bear:'brook.png'}
 };
 
-// 8x8: змея на месте коня, бык на месте слона
+// 8x8: медведь на месте ладьи, змея — коня, бык — слона
 const backRank = [
-  'rook','snake','bull','queen','king','bull','snake','rook'
+  'bear','snake','bull','queen','king','bull','snake','bear'
 ];
 
 // ================== STATE ==================
@@ -177,7 +177,7 @@ function evaluateMoveForBot(move) {
   // Material gain
   const capturedPiece = board[move.to.y][move.to.x];
   if (capturedPiece) {
-    const pieceValues = { pawn: 1, rook: 5, queen: 9, king: 100, snake: 4, bull: 3 };
+    const pieceValues = { pawn: 1, queen: 9, king: 100, snake: 4, bull: 3, bear: 5 };
     score += (pieceValues[capturedPiece.type] || 2) * 10;
   }
 
@@ -263,8 +263,8 @@ function movePiece(sx,sy,tx,ty,enPassant = false){
   // Pawn promotion
   if(p.type==='pawn'){
     if((p.color==='w'&&ty===0)||(p.color==='b'&&ty===ROWS-1)){
-      const choice=prompt('queen, rook, snake, bull','queen');
-      const ok=['queen','rook','snake','bull'];
+      const choice=prompt('queen, snake, bull, bear','queen');
+      const ok=['queen','snake','bull','bear'];
       p.type=ok.includes(choice)?choice:'queen';
     }
   }
@@ -341,6 +341,8 @@ function isSquareAttacked(x,y,by,b){
           moves=genSnake(xx,yy,by,b); break;
         case 'bull':
           moves=genBull(xx,yy,by,b); break;
+        case 'bear':
+          moves=genBear(xx,yy,by,b); break;
       }
 
       if(moves.some(m=>m.x===x && m.y===y)) return true;
@@ -446,6 +448,7 @@ function generateMoves(x,y,b){
     case 'pawn': return genPawn(x,y,p.color,b);
     case 'snake': return genSnake(x,y,p.color,b);
     case 'bull': return genBull(x,y,p.color,b);
+    case 'bear': return genBear(x,y,p.color,b);
   }
   return [];
 }
@@ -482,7 +485,7 @@ function genKing(x,y,c,b){
 
   // длинная
   const left=b[y][0];
-  if(left&&left.type==='rook'&&!left.moved){
+  if(left&&left.type==='bear'&&!left.moved){
     let ok=true;
     for(let i=1;i<x;i++){
       if(b[y][i]||isSquareAttacked(i,y,enemy,b)) ok=false;
@@ -492,7 +495,7 @@ function genKing(x,y,c,b){
 
   // короткая
   const right=b[y][COLS-1];
-  if(right&&right.type==='rook'&&!right.moved){
+  if(right&&right.type==='bear'&&!right.moved){
     let ok=true;
     for(let i=x+1;i<COLS-1;i++){
       if(b[y][i]||isSquareAttacked(i,y,enemy,b)) ok=false;
@@ -597,6 +600,43 @@ function genBull(x,y,c,b){
       if(t&&t.color===c) break;
       r.push({x:cx,y:cy});
       if(t) break;
+    }
+  }
+  return [...new Map(r.map(m=>[m.x+','+m.y,m])).values()];
+}
+
+// 🐻 BEAR — 2 forward, 2 left/right, 2 back; can stop or capture on any step
+function genBear(x,y,c,b){
+  // left/right relative to facing direction
+  const orients = [
+    { fwd:[0,-1], left:[-1,0], right:[1,0] },  // up
+    { fwd:[0, 1], left:[1,0], right:[-1,0] },  // down
+    { fwd:[1, 0], left:[0,-1], right:[0,1] },  // right
+    { fwd:[-1,0], left:[0,1], right:[0,-1] },  // left
+  ];
+  const r=[];
+  for(const o of orients){
+    for(const side of [o.left, o.right]){
+      const path=[];
+      let cx=x, cy=y;
+      const legs = [
+        [o.fwd, 2],
+        [side, 2],
+        [[-o.fwd[0], -o.fwd[1]], 2],
+      ];
+      for(const [dir, steps] of legs){
+        for(let i=0;i<steps;i++){
+          cx+=dir[0]; cy+=dir[1];
+          path.push({x:cx,y:cy});
+        }
+      }
+      for(const m of path){
+        if(!inside(m.x,m.y)) break;
+        const t=b[m.y][m.x];
+        if(t&&t.color===c) break;
+        r.push(m);
+        if(t) break;
+      }
     }
   }
   return [...new Map(r.map(m=>[m.x+','+m.y,m])).values()];
@@ -1257,7 +1297,8 @@ function pieceToFen(piece) {
     'queen': 'q',
     'king': 'k',
     'snake': 's',
-    'bull': 'u'
+    'bull': 'u',
+    'bear': 'e'
   };
 
   const symbol = typeMap[piece.type];
