@@ -1,19 +1,19 @@
 // ================== CONFIG ==================
-const COLS = 10;
+const COLS = 8;
 const ROWS = 8;
 const IMG = 'img/';
 
 const cellsImg = { w: 'wcell.jpg', b: 'bcell.jpg' };
 
+// bull временно использует картинки слона
 const piecesImg = {
-  w:{rook:'wrook.png',knight:'wknight.png',bishop:'wbishop.png',queen:'wqueen.png',king:'wking.png',pawn:'wpawn.png',snake:'wsnake.png'},
-  b:{rook:'brook.png',knight:'bknight.png',bishop:'bbishop.png',queen:'bqueen.png',king:'bking.png',pawn:'bpawn.png',snake:'bsnake.png'}
+  w:{rook:'wrook.png',queen:'wqueen.png',king:'wking.png',pawn:'wpawn.png',snake:'wsnake.png',bull:'wbishop.png'},
+  b:{rook:'brook.png',queen:'bqueen.png',king:'bking.png',pawn:'bpawn.png',snake:'bsnake.png',bull:'bbishop.png'}
 };
 
+// 8x8: змея на месте коня, бык на месте слона
 const backRank = [
-  'rook','knight','bishop','snake',
-  'queen','king',
-  'snake','bishop','knight','rook'
+  'rook','snake','bull','queen','king','bull','snake','rook'
 ];
 
 // ================== STATE ==================
@@ -177,8 +177,8 @@ function evaluateMoveForBot(move) {
   // Material gain
   const capturedPiece = board[move.to.y][move.to.x];
   if (capturedPiece) {
-    const pieceValues = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 100, snake: 4 };
-    score += pieceValues[capturedPiece.type] * 10;
+    const pieceValues = { pawn: 1, rook: 5, queen: 9, king: 100, snake: 4, bull: 3 };
+    score += (pieceValues[capturedPiece.type] || 2) * 10;
   }
 
   // Snake-specific evaluation
@@ -188,7 +188,7 @@ function evaluateMoveForBot(move) {
     score += 8; // Base snake value
 
     // Prefer central positions
-    const centerDistance = Math.abs(move.to.x - 5) + Math.abs(move.to.y - 4);
+    const centerDistance = Math.abs(move.to.x - 3.5) + Math.abs(move.to.y - 3.5);
     score += Math.max(0, 6 - centerDistance);
 
     // Bonus for attacking enemy pieces
@@ -199,7 +199,7 @@ function evaluateMoveForBot(move) {
 
   // Position bonuses
   if (move.to.y >= 2 && move.to.y <= 5) score += 2;
-  if (move.to.x >= 3 && move.to.x <= 6) score += 1;
+  if (move.to.x >= 2 && move.to.x <= 5) score += 1;
 
   return score + Math.random() * 3; // Add small randomness
 }
@@ -263,8 +263,8 @@ function movePiece(sx,sy,tx,ty,enPassant = false){
   // Pawn promotion
   if(p.type==='pawn'){
     if((p.color==='w'&&ty===0)||(p.color==='b'&&ty===ROWS-1)){
-      const choice=prompt('queen, rook, bishop, knight, snake','queen');
-      const ok=['queen','rook','bishop','knight','snake'];
+      const choice=prompt('queen, rook, snake, bull','queen');
+      const ok=['queen','rook','snake','bull'];
       p.type=ok.includes(choice)?choice:'queen';
     }
   }
@@ -335,14 +335,12 @@ function isSquareAttacked(x,y,by,b){
         }
         case 'rook':
           moves=genRook(xx,yy,by,b); break;
-        case 'bishop':
-          moves=genBishop(xx,yy,by,b); break;
         case 'queen':
           moves=genQueen(xx,yy,by,b); break;
-        case 'knight':
-          moves=genKnight(xx,yy,by,b); break;
         case 'snake':
           moves=genSnake(xx,yy,by,b); break;
+        case 'bull':
+          moves=genBull(xx,yy,by,b); break;
       }
 
       if(moves.some(m=>m.x===x && m.y===y)) return true;
@@ -445,10 +443,9 @@ function generateMoves(x,y,b){
     case 'king': return genKing(x,y,p.color,b);
     case 'queen': return genQueen(x,y,p.color,b);
     case 'rook': return genRook(x,y,p.color,b);
-    case 'bishop': return genBishop(x,y,p.color,b);
-    case 'knight': return genKnight(x,y,p.color,b);
     case 'pawn': return genPawn(x,y,p.color,b);
     case 'snake': return genSnake(x,y,p.color,b);
+    case 'bull': return genBull(x,y,p.color,b);
   }
   return [];
 }
@@ -558,6 +555,45 @@ function genSnake(x,y,c,b){
       cx+=v[0]; cy+=v[1];
       if(!inside(cx,cy)) break;
       const t=b[cy][cx];
+      if(t&&t.color===c) break;
+      r.push({x:cx,y:cy});
+      if(t) break;
+    }
+  }
+  return [...new Map(r.map(m=>[m.x+','+m.y,m])).values()];
+}
+
+// 🐂 BULL — 1 diagonal sidestep, then up to 2 straight (same for all 4 sides)
+function genBull(x,y,c,b){
+  const paths = [
+    // up
+    { first:[-1,-1], step:[0,-1] },
+    { first:[ 1,-1], step:[0,-1] },
+    // down
+    { first:[-1, 1], step:[0, 1] },
+    { first:[ 1, 1], step:[0, 1] },
+    // left
+    { first:[-1,-1], step:[-1, 0] },
+    { first:[-1, 1], step:[-1, 0] },
+    // right
+    { first:[ 1,-1], step:[ 1, 0] },
+    { first:[ 1, 1], step:[ 1, 0] },
+  ];
+  const r=[];
+  for(const path of paths){
+    let cx=x+path.first[0];
+    let cy=y+path.first[1];
+    if(!inside(cx,cy)) continue;
+    let t=b[cy][cx];
+    if(t&&t.color===c) continue;
+    r.push({x:cx,y:cy});
+    if(t) continue;
+
+    for(let i=0;i<2;i++){
+      cx+=path.step[0];
+      cy+=path.step[1];
+      if(!inside(cx,cy)) break;
+      t=b[cy][cx];
       if(t&&t.color===c) break;
       r.push({x:cx,y:cy});
       if(t) break;
@@ -1218,11 +1254,10 @@ function pieceToFen(piece) {
   const typeMap = {
     'pawn': 'p',
     'rook': 'r',
-    'knight': 'n',
-    'bishop': 'b',
     'queen': 'q',
     'king': 'k',
-    'snake': 's'  // Snake piece for fairy chess
+    'snake': 's',
+    'bull': 'u'
   };
 
   const symbol = typeMap[piece.type];

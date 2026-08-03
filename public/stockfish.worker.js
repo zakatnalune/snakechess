@@ -99,7 +99,7 @@ function validateMove(move, fen) {
     return null;
   }
 
-  // Basic validation for our 10x8 fairy chess board
+  // Basic validation for our 8x8 fairy chess board
   if (move.length < 4 || move.length > 5) {
     console.log('Invalid move length:', move.length);
     return null;
@@ -113,9 +113,9 @@ function validateMove(move, fen) {
 
   console.log('Parsed coordinates:', {fromFile, fromRank, toFile, toRank});
 
-  // Check board bounds (10 files: a-j, 8 ranks: 1-8)
-  if (fromFile < 0 || fromFile > 9 || fromRank < 0 || fromRank > 7 ||
-      toFile < 0 || toFile > 9 || toRank < 0 || toRank > 7) {
+  // Check board bounds (8 files: a-h, 8 ranks: 1-8)
+  if (fromFile < 0 || fromFile > 7 || fromRank < 0 || fromRank > 7 ||
+      toFile < 0 || toFile > 7 || toRank < 0 || toRank > 7) {
     console.log('Move out of bounds');
     return null;
   }

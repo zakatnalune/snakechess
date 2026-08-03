@@ -22,7 +22,7 @@ body {
 /* ================== BOARD ================== */
 .board {
   display: grid;
-  grid-template-columns: repeat(10, 80px);
+  grid-template-columns: repeat(8, 80px);
   grid-template-rows: repeat(8, 80px);
   border: 6px solid #000;
   background: #000;
